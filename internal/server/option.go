@@ -35,6 +35,7 @@ type Options struct {
 	DebugInfo  utils.Slice
 	Register   func(info *ServerInfo) error
 	UnRegister func(info *ServerInfo) error
+	MWBs       []MiddlewareBuilder
 }
 
 // NewOptions creates a default options.

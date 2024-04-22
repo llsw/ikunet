@@ -13,12 +13,44 @@ var (
 )
 
 // TransportServiceImpl implements the last service interface defined in the IDL.
-type TransportServiceImpl struct{}
+type TransportServiceImpl struct {
+	eps Endpoint
+}
+
+func NewTransportServiceImpl(eps Endpoint) *TransportServiceImpl {
+	return &TransportServiceImpl{
+		eps: eps,
+	}
+}
 
 // Call implements the TransportServiceImpl interface.
 func (s *TransportServiceImpl) Call(ctx context.Context, req *transport.Transport) (resp *transport.Transport, err error) {
-	// TODO: Your code here...
+	resp = &transport.Transport{}
+	err = s.eps(ctx, req, resp)
 	return
+}
+
+func richMWsWithBuilder(ctx context.Context, mwBs []MiddlewareBuilder, s *server) []Middleware {
+	for i := range mwBs {
+		s.mws = append(s.mws, mwBs[i](ctx))
+	}
+	return s.mws
+}
+
+// newErrorHandleMW provides a hook point for server error handling.
+func newErrorHandleMW(errHandle func(context.Context, error) error) Middleware {
+	return func(next Endpoint) Endpoint {
+		return func(ctx context.Context, request, response *transport.Transport) error {
+			err := next(ctx, request, response)
+			if err == nil {
+				return nil
+			}
+			if errHandle != nil {
+				return errHandle(ctx, err)
+			}
+			return nil
+		}
+	}
 }
 
 type Server interface {
@@ -30,13 +62,20 @@ type Server interface {
 type server struct {
 	opt Options
 	svc ksvc.Server
+	mws []Middleware
 }
 
 func NewServer(opts ...Option) Server {
 	s := &server{
 		opt: *NewOptions(opts),
 	}
-	s.svc = transportSvc.NewServer(new(TransportServiceImpl))
+	s.mws = richMWsWithBuilder(context.Background(), s.opt.MWBs, s)
+	emw := newErrorHandleMW(s.opt.ErrHandle)
+	s.mws = append(s.mws, emw)
+	eps := Chain(s.mws...)(func(ctx context.Context, req, resp *transport.Transport) error {
+		return nil
+	})
+	s.svc = transportSvc.NewServer(NewTransportServiceImpl(eps))
 	return s
 }
 
