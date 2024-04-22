@@ -3,7 +3,7 @@ package transportservice
 
 import (
 	server "github.com/cloudwego/kitex/server"
-	transport "github.com/llsw/ikunet/kitex_gen/transport"
+	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
 )
 
 // NewServer creates a server.Server with the given handler and options.

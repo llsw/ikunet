@@ -1,8 +1,9 @@
 package main
 
 import (
-	transport "github.com/llsw/ikunet/kitex_gen/transport/transportservice"
 	"log"
+
+	transport "github.com/llsw/ikunet/internal/kitex_gen/transport/transportservice"
 )
 
 func main() {

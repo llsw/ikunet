@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	transport "github.com/llsw/ikunet/kitex_gen/transport"
+
+	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
 )
 
 // TransportServiceImpl implements the last service interface defined in the IDL.

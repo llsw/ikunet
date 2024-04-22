@@ -6,7 +6,7 @@ import (
 	"context"
 	client "github.com/cloudwego/kitex/client"
 	callopt "github.com/cloudwego/kitex/client/callopt"
-	transport "github.com/llsw/ikunet/kitex_gen/transport"
+	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
 )
 
 // Client is designed to provide IDL-compatible methods with call-option parameter for kitex framework.
