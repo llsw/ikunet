@@ -2,15 +2,22 @@ package server
 
 import (
 	"context"
+	"time"
 
+	actor "github.com/asynkron/protoactor-go/actor"
 	ksvc "github.com/cloudwego/kitex/server"
 	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
 	transportSvc "github.com/llsw/ikunet/internal/kitex_gen/transport/transportservice"
 )
 
 var (
-	_ Server = &server{}
+	asys *actor.ActorSystem
+	_    Server = &server{}
 )
+
+func init() {
+	asys = actor.NewActorSystem()
+}
 
 // TransportServiceImpl implements the last service interface defined in the IDL.
 type TransportServiceImpl struct {
@@ -48,7 +55,32 @@ func newErrorHandleMW(errHandle func(context.Context, error) error) Middleware {
 			if errHandle != nil {
 				return errHandle(ctx, err)
 			}
-			return nil
+			return err
+		}
+	}
+}
+
+type Message struct {
+	ctx      context.Context
+	request  *transport.Transport
+	response *transport.Transport
+}
+
+func newActorMW() Middleware {
+	return func(next Endpoint) Endpoint {
+		return func(ctx context.Context, request, response *transport.Transport) error {
+			_, ok := asys.ProcessRegistry.GetLocal(request.Addr)
+			if ok {
+				pid := actor.NewPID(asys.ProcessRegistry.Address, request.Addr)
+				_, err := asys.Root.RequestFuture(pid, &Message{
+					ctx:     ctx,
+					request: request,
+				}, time.Second*20).Result()
+				if err != nil {
+					return err
+				}
+			}
+			return next(ctx, request, response)
 		}
 	}
 }
@@ -75,8 +107,9 @@ func NewServer(opts ...Option) Server {
 
 func (s *server) init() {
 	s.mws = richMWsWithBuilder(context.Background(), s.opt.MWBs, s)
+	amw := newActorMW()
 	emw := newErrorHandleMW(s.opt.ErrHandle)
-	s.mws = append(s.mws, emw)
+	s.mws = append(s.mws, emw, amw)
 	eps := Chain(s.mws...)(nilEndpoint)
 	s.svc = transportSvc.NewServer(NewTransportServiceImpl(eps))
 }

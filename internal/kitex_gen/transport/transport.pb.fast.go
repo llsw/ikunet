@@ -12,51 +12,6 @@ var (
 	_ = fastpb.Skip
 )
 
-func (x *PID) FastRead(buf []byte, _type int8, number int32) (offset int, err error) {
-	switch number {
-	case 1:
-		offset, err = x.fastReadField1(buf, _type)
-		if err != nil {
-			goto ReadFieldError
-		}
-	case 2:
-		offset, err = x.fastReadField2(buf, _type)
-		if err != nil {
-			goto ReadFieldError
-		}
-	case 3:
-		offset, err = x.fastReadField3(buf, _type)
-		if err != nil {
-			goto ReadFieldError
-		}
-	default:
-		offset, err = fastpb.Skip(buf, _type, number)
-		if err != nil {
-			goto SkipFieldError
-		}
-	}
-	return offset, nil
-SkipFieldError:
-	return offset, fmt.Errorf("%T cannot parse invalid wire-format data, error: %s", x, err)
-ReadFieldError:
-	return offset, fmt.Errorf("%T read field %d '%s' error: %s", x, number, fieldIDToName_PID[number], err)
-}
-
-func (x *PID) fastReadField1(buf []byte, _type int8) (offset int, err error) {
-	x.Address, offset, err = fastpb.ReadString(buf, _type)
-	return offset, err
-}
-
-func (x *PID) fastReadField2(buf []byte, _type int8) (offset int, err error) {
-	x.Id, offset, err = fastpb.ReadString(buf, _type)
-	return offset, err
-}
-
-func (x *PID) fastReadField3(buf []byte, _type int8) (offset int, err error) {
-	x.RequestId, offset, err = fastpb.ReadUint32(buf, _type)
-	return offset, err
-}
-
 func (x *Meta) FastRead(buf []byte, _type int8, number int32) (offset int, err error) {
 	switch number {
 	case 1:
@@ -123,13 +78,8 @@ ReadFieldError:
 }
 
 func (x *Transport) fastReadField1(buf []byte, _type int8) (offset int, err error) {
-	var v PID
-	offset, err = fastpb.ReadMessage(buf, _type, &v)
-	if err != nil {
-		return offset, err
-	}
-	x.Addr = &v
-	return offset, nil
+	x.Addr, offset, err = fastpb.ReadString(buf, _type)
+	return offset, err
 }
 
 func (x *Transport) fastReadField2(buf []byte, _type int8) (offset int, err error) {
@@ -155,40 +105,6 @@ func (x *Transport) fastReadField4(buf []byte, _type int8) (offset int, err erro
 func (x *Transport) fastReadField5(buf []byte, _type int8) (offset int, err error) {
 	x.Msg, offset, err = fastpb.ReadBytes(buf, _type)
 	return offset, err
-}
-
-func (x *PID) FastWrite(buf []byte) (offset int) {
-	if x == nil {
-		return offset
-	}
-	offset += x.fastWriteField1(buf[offset:])
-	offset += x.fastWriteField2(buf[offset:])
-	offset += x.fastWriteField3(buf[offset:])
-	return offset
-}
-
-func (x *PID) fastWriteField1(buf []byte) (offset int) {
-	if x.Address == "" {
-		return offset
-	}
-	offset += fastpb.WriteString(buf[offset:], 1, x.GetAddress())
-	return offset
-}
-
-func (x *PID) fastWriteField2(buf []byte) (offset int) {
-	if x.Id == "" {
-		return offset
-	}
-	offset += fastpb.WriteString(buf[offset:], 2, x.GetId())
-	return offset
-}
-
-func (x *PID) fastWriteField3(buf []byte) (offset int) {
-	if x.RequestId == 0 {
-		return offset
-	}
-	offset += fastpb.WriteUint32(buf[offset:], 3, x.GetRequestId())
-	return offset
 }
 
 func (x *Meta) FastWrite(buf []byte) (offset int) {
@@ -220,10 +136,10 @@ func (x *Transport) FastWrite(buf []byte) (offset int) {
 }
 
 func (x *Transport) fastWriteField1(buf []byte) (offset int) {
-	if x.Addr == nil {
+	if x.Addr == "" {
 		return offset
 	}
-	offset += fastpb.WriteMessage(buf[offset:], 1, x.GetAddr())
+	offset += fastpb.WriteString(buf[offset:], 1, x.GetAddr())
 	return offset
 }
 
@@ -259,40 +175,6 @@ func (x *Transport) fastWriteField5(buf []byte) (offset int) {
 	return offset
 }
 
-func (x *PID) Size() (n int) {
-	if x == nil {
-		return n
-	}
-	n += x.sizeField1()
-	n += x.sizeField2()
-	n += x.sizeField3()
-	return n
-}
-
-func (x *PID) sizeField1() (n int) {
-	if x.Address == "" {
-		return n
-	}
-	n += fastpb.SizeString(1, x.GetAddress())
-	return n
-}
-
-func (x *PID) sizeField2() (n int) {
-	if x.Id == "" {
-		return n
-	}
-	n += fastpb.SizeString(2, x.GetId())
-	return n
-}
-
-func (x *PID) sizeField3() (n int) {
-	if x.RequestId == 0 {
-		return n
-	}
-	n += fastpb.SizeUint32(3, x.GetRequestId())
-	return n
-}
-
 func (x *Meta) Size() (n int) {
 	if x == nil {
 		return n
@@ -322,10 +204,10 @@ func (x *Transport) Size() (n int) {
 }
 
 func (x *Transport) sizeField1() (n int) {
-	if x.Addr == nil {
+	if x.Addr == "" {
 		return n
 	}
-	n += fastpb.SizeMessage(1, x.GetAddr())
+	n += fastpb.SizeString(1, x.GetAddr())
 	return n
 }
 
@@ -359,12 +241,6 @@ func (x *Transport) sizeField5() (n int) {
 	}
 	n += fastpb.SizeBytes(5, x.GetMsg())
 	return n
-}
-
-var fieldIDToName_PID = map[int32]string{
-	1: "Address",
-	2: "Id",
-	3: "RequestId",
 }
 
 var fieldIDToName_Meta = map[int32]string{
