@@ -21,3 +21,7 @@ func Chain(mws ...Middleware) Middleware {
 		return next
 	}
 }
+
+func nilEndpoint(ctx context.Context, req, resp *transport.Transport) error {
+	return nil
+}

@@ -69,14 +69,16 @@ func NewServer(opts ...Option) Server {
 	s := &server{
 		opt: *NewOptions(opts),
 	}
+	s.init()
+	return s
+}
+
+func (s *server) init() {
 	s.mws = richMWsWithBuilder(context.Background(), s.opt.MWBs, s)
 	emw := newErrorHandleMW(s.opt.ErrHandle)
 	s.mws = append(s.mws, emw)
-	eps := Chain(s.mws...)(func(ctx context.Context, req, resp *transport.Transport) error {
-		return nil
-	})
+	eps := Chain(s.mws...)(nilEndpoint)
 	s.svc = transportSvc.NewServer(NewTransportServiceImpl(eps))
-	return s
 }
 
 func (s *server) Run() (err error) {
