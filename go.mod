@@ -1,4 +1,4 @@
-module github.com/llsw/ikunnet
+module github.com/llsw/ikunet
 
 go 1.22.2
 

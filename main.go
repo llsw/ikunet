@@ -1,7 +1,7 @@
 package main
 
 import (
-	transport "github.com/llsw/ikunnet/kitex_gen/transport/transportservice"
+	transport "github.com/llsw/ikunet/kitex_gen/transport/transportservice"
 	"log"
 )
 

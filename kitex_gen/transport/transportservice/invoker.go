@@ -4,7 +4,7 @@ package transportservice
 
 import (
 	server "github.com/cloudwego/kitex/server"
-	transport "github.com/llsw/ikunnet/kitex_gen/transport"
+	transport "github.com/llsw/ikunet/kitex_gen/transport"
 )
 
 // NewInvoker creates a server.Invoker with the given handler and options.

@@ -4,8 +4,8 @@ import (
 	"context"
 
 	ksvc "github.com/cloudwego/kitex/server"
-	transport "github.com/llsw/ikunnet/kitex_gen/transport"
-	transportSvc "github.com/llsw/ikunnet/kitex_gen/transport/transportservice"
+	transport "github.com/llsw/ikunet/kitex_gen/transport"
+	transportSvc "github.com/llsw/ikunet/kitex_gen/transport/transportservice"
 )
 
 var (
