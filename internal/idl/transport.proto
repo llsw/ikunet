@@ -3,13 +3,19 @@ syntax = "proto3";
 package transport;
 option go_package = "transport";
 
+message Meta {
+    string uuid = 1;
+}
+
 message Transport {
     oneof svc {
         int32 addr = 1;
         string name = 2;
     }
     int64 session = 3;
-    bytes msg = 4;
+    Meta meta = 4;
+    string cmd = 5;
+    bytes msg = 6;
 }
 
 service TransportService {

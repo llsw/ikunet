@@ -12,6 +12,31 @@ var (
 	_ = fastpb.Skip
 )
 
+func (x *Meta) FastRead(buf []byte, _type int8, number int32) (offset int, err error) {
+	switch number {
+	case 1:
+		offset, err = x.fastReadField1(buf, _type)
+		if err != nil {
+			goto ReadFieldError
+		}
+	default:
+		offset, err = fastpb.Skip(buf, _type, number)
+		if err != nil {
+			goto SkipFieldError
+		}
+	}
+	return offset, nil
+SkipFieldError:
+	return offset, fmt.Errorf("%T cannot parse invalid wire-format data, error: %s", x, err)
+ReadFieldError:
+	return offset, fmt.Errorf("%T read field %d '%s' error: %s", x, number, fieldIDToName_Meta[number], err)
+}
+
+func (x *Meta) fastReadField1(buf []byte, _type int8) (offset int, err error) {
+	x.Uuid, offset, err = fastpb.ReadString(buf, _type)
+	return offset, err
+}
+
 func (x *Transport) FastRead(buf []byte, _type int8, number int32) (offset int, err error) {
 	switch number {
 	case 1:
@@ -31,6 +56,16 @@ func (x *Transport) FastRead(buf []byte, _type int8, number int32) (offset int, 
 		}
 	case 4:
 		offset, err = x.fastReadField4(buf, _type)
+		if err != nil {
+			goto ReadFieldError
+		}
+	case 5:
+		offset, err = x.fastReadField5(buf, _type)
+		if err != nil {
+			goto ReadFieldError
+		}
+	case 6:
+		offset, err = x.fastReadField6(buf, _type)
 		if err != nil {
 			goto ReadFieldError
 		}
@@ -67,8 +102,39 @@ func (x *Transport) fastReadField3(buf []byte, _type int8) (offset int, err erro
 }
 
 func (x *Transport) fastReadField4(buf []byte, _type int8) (offset int, err error) {
+	var v Meta
+	offset, err = fastpb.ReadMessage(buf, _type, &v)
+	if err != nil {
+		return offset, err
+	}
+	x.Meta = &v
+	return offset, nil
+}
+
+func (x *Transport) fastReadField5(buf []byte, _type int8) (offset int, err error) {
+	x.Cmd, offset, err = fastpb.ReadString(buf, _type)
+	return offset, err
+}
+
+func (x *Transport) fastReadField6(buf []byte, _type int8) (offset int, err error) {
 	x.Msg, offset, err = fastpb.ReadBytes(buf, _type)
 	return offset, err
+}
+
+func (x *Meta) FastWrite(buf []byte) (offset int) {
+	if x == nil {
+		return offset
+	}
+	offset += x.fastWriteField1(buf[offset:])
+	return offset
+}
+
+func (x *Meta) fastWriteField1(buf []byte) (offset int) {
+	if x.Uuid == "" {
+		return offset
+	}
+	offset += fastpb.WriteString(buf[offset:], 1, x.GetUuid())
+	return offset
 }
 
 func (x *Transport) FastWrite(buf []byte) (offset int) {
@@ -79,6 +145,8 @@ func (x *Transport) FastWrite(buf []byte) (offset int) {
 	offset += x.fastWriteField2(buf[offset:])
 	offset += x.fastWriteField3(buf[offset:])
 	offset += x.fastWriteField4(buf[offset:])
+	offset += x.fastWriteField5(buf[offset:])
+	offset += x.fastWriteField6(buf[offset:])
 	return offset
 }
 
@@ -107,11 +175,43 @@ func (x *Transport) fastWriteField3(buf []byte) (offset int) {
 }
 
 func (x *Transport) fastWriteField4(buf []byte) (offset int) {
+	if x.Meta == nil {
+		return offset
+	}
+	offset += fastpb.WriteMessage(buf[offset:], 4, x.GetMeta())
+	return offset
+}
+
+func (x *Transport) fastWriteField5(buf []byte) (offset int) {
+	if x.Cmd == "" {
+		return offset
+	}
+	offset += fastpb.WriteString(buf[offset:], 5, x.GetCmd())
+	return offset
+}
+
+func (x *Transport) fastWriteField6(buf []byte) (offset int) {
 	if len(x.Msg) == 0 {
 		return offset
 	}
-	offset += fastpb.WriteBytes(buf[offset:], 4, x.GetMsg())
+	offset += fastpb.WriteBytes(buf[offset:], 6, x.GetMsg())
 	return offset
+}
+
+func (x *Meta) Size() (n int) {
+	if x == nil {
+		return n
+	}
+	n += x.sizeField1()
+	return n
+}
+
+func (x *Meta) sizeField1() (n int) {
+	if x.Uuid == "" {
+		return n
+	}
+	n += fastpb.SizeString(1, x.GetUuid())
+	return n
 }
 
 func (x *Transport) Size() (n int) {
@@ -122,6 +222,8 @@ func (x *Transport) Size() (n int) {
 	n += x.sizeField2()
 	n += x.sizeField3()
 	n += x.sizeField4()
+	n += x.sizeField5()
+	n += x.sizeField6()
 	return n
 }
 
@@ -150,16 +252,38 @@ func (x *Transport) sizeField3() (n int) {
 }
 
 func (x *Transport) sizeField4() (n int) {
+	if x.Meta == nil {
+		return n
+	}
+	n += fastpb.SizeMessage(4, x.GetMeta())
+	return n
+}
+
+func (x *Transport) sizeField5() (n int) {
+	if x.Cmd == "" {
+		return n
+	}
+	n += fastpb.SizeString(5, x.GetCmd())
+	return n
+}
+
+func (x *Transport) sizeField6() (n int) {
 	if len(x.Msg) == 0 {
 		return n
 	}
-	n += fastpb.SizeBytes(4, x.GetMsg())
+	n += fastpb.SizeBytes(6, x.GetMsg())
 	return n
+}
+
+var fieldIDToName_Meta = map[int32]string{
+	1: "Uuid",
 }
 
 var fieldIDToName_Transport = map[int32]string{
 	1: "Addr",
 	2: "Name",
 	3: "Session",
-	4: "Msg",
+	4: "Meta",
+	5: "Cmd",
+	6: "Msg",
 }
