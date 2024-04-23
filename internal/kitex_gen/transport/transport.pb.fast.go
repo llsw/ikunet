@@ -64,6 +64,11 @@ func (x *Transport) FastRead(buf []byte, _type int8, number int32) (offset int, 
 		if err != nil {
 			goto ReadFieldError
 		}
+	case 7:
+		offset, err = x.fastReadField7(buf, _type)
+		if err != nil {
+			goto ReadFieldError
+		}
 	default:
 		offset, err = fastpb.Skip(buf, _type, number)
 		if err != nil {
@@ -107,6 +112,11 @@ func (x *Transport) fastReadField5(buf []byte, _type int8) (offset int, err erro
 	return offset, err
 }
 
+func (x *Transport) fastReadField7(buf []byte, _type int8) (offset int, err error) {
+	x.Traces, offset, err = fastpb.ReadBytes(buf, _type)
+	return offset, err
+}
+
 func (x *Meta) FastWrite(buf []byte) (offset int) {
 	if x == nil {
 		return offset
@@ -132,6 +142,7 @@ func (x *Transport) FastWrite(buf []byte) (offset int) {
 	offset += x.fastWriteField3(buf[offset:])
 	offset += x.fastWriteField4(buf[offset:])
 	offset += x.fastWriteField5(buf[offset:])
+	offset += x.fastWriteField7(buf[offset:])
 	return offset
 }
 
@@ -175,6 +186,14 @@ func (x *Transport) fastWriteField5(buf []byte) (offset int) {
 	return offset
 }
 
+func (x *Transport) fastWriteField7(buf []byte) (offset int) {
+	if len(x.Traces) == 0 {
+		return offset
+	}
+	offset += fastpb.WriteBytes(buf[offset:], 7, x.GetTraces())
+	return offset
+}
+
 func (x *Meta) Size() (n int) {
 	if x == nil {
 		return n
@@ -200,6 +219,7 @@ func (x *Transport) Size() (n int) {
 	n += x.sizeField3()
 	n += x.sizeField4()
 	n += x.sizeField5()
+	n += x.sizeField7()
 	return n
 }
 
@@ -243,6 +263,14 @@ func (x *Transport) sizeField5() (n int) {
 	return n
 }
 
+func (x *Transport) sizeField7() (n int) {
+	if len(x.Traces) == 0 {
+		return n
+	}
+	n += fastpb.SizeBytes(7, x.GetTraces())
+	return n
+}
+
 var fieldIDToName_Meta = map[int32]string{
 	1: "Uuid",
 }
@@ -253,4 +281,5 @@ var fieldIDToName_Transport = map[int32]string{
 	3: "Meta",
 	4: "Cmd",
 	5: "Msg",
+	7: "Traces",
 }

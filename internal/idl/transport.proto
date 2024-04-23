@@ -13,6 +13,7 @@ message Transport {
     Meta meta = 3;
     string cmd = 4;
     bytes msg = 5;
+    bytes traces = 7;
 }
 
 service TransportService {

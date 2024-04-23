@@ -91,8 +91,47 @@ func GetTraceId(ctx context.Context) string {
 	return traceId
 }
 
-func GetTrace(ctx context.Context) string {
-	return fmt.Sprintf("%s %s", GetTraceId(ctx))
+func TracesToBytes(cluster, svc, cmd string) ([]byte, error) {
+	return []byte{0, 0, 0, 0, 0, 0}, nil
+}
+
+func IdToTraces(cluster, svc, cmd int) []string {
+	return []string{
+		string(cluster),
+		string(svc),
+		string(cmd),
+	}
+}
+
+func BytesToTraces(traces []byte) ([]string, error) {
+	l := len(traces)
+	if l < 6 || l%6 != 0 {
+		return nil, kerrors.ErrInternalException.WithCause(errors.New("traces length error"))
+	}
+	res := make([]string, l/2)
+	for i := 0; i < l; i += 6 {
+		cluter := int(traces[i])*256 + int(traces[i+1])
+		svc := int(traces[i+2])*256 + int(traces[i+3])
+		cmd := int(traces[i+4])*256 + int(traces[i+5])
+		trs := IdToTraces(cluter, svc, cmd)
+		idx := i / 2
+		res[idx] = trs[0]
+		res[idx+1] = trs[1]
+		res[idx+2] = trs[2]
+	}
+	return res, nil
+}
+
+func GetTrace(ctx context.Context, request *transport.Transport) string {
+	res, err := BytesToTraces(request.Traces)
+	var str string
+	if err != nil {
+		str = res[0]
+		for i := 1; i < len(res); i++ {
+			str = " " + res[i]
+		}
+	}
+	return fmt.Sprintf("%s %s", GetTraceId(ctx), str)
 }
 
 func SetTraceId(ctx context.Context, traceId string) context.Context {
@@ -107,7 +146,7 @@ func logRpcErr(ctx context.Context, request *transport.Transport, err error) {
 			request.Cmd,
 			request.Session,
 			err.Error(),
-			GetTrace(ctx),
+			GetTrace(ctx, request),
 		),
 	)
 }
@@ -118,6 +157,10 @@ func newTraceMW(cluster string) Middleware {
 			traceId := GetTraceId(ctx)
 			if traceId == "" {
 				SetTraceId(ctx, fmt.Sprintf("%s-%d", request.Meta.Uuid, request.Session))
+			}
+			trs, err := TracesToBytes(cluster, request.Addr, request.Cmd)
+			if err == nil {
+				request.Traces = append(request.Traces, trs...)
 			}
 			return next(ctx, request, response)
 		}
