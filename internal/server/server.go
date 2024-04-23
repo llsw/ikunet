@@ -2,9 +2,14 @@ package server
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"slices"
 	"time"
 
 	actor "github.com/asynkron/protoactor-go/actor"
+	"github.com/cloudwego/hertz/pkg/common/hlog"
+	kerrors "github.com/cloudwego/kitex/pkg/kerrors"
 	ksvc "github.com/cloudwego/kitex/server"
 	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
 	transportSvc "github.com/llsw/ikunet/internal/kitex_gen/transport/transportservice"
@@ -17,6 +22,10 @@ var (
 
 func init() {
 	asys = actor.NewActorSystem()
+}
+
+func GetActorSystem() *actor.ActorSystem {
+	return asys
 }
 
 // TransportServiceImpl implements the last service interface defined in the IDL.
@@ -60,10 +69,59 @@ func newErrorHandleMW(errHandle func(context.Context, error) error) Middleware {
 	}
 }
 
+type Transport struct {
+	Addr    string
+	Session int64
+	Meta    *transport.Meta
+	Cmd     string
+	Msg     any
+}
+
 type Message struct {
 	ctx      context.Context
-	request  *transport.Transport
-	response *transport.Transport
+	request  any
+	response any
+}
+
+func GetTraceId(ctx context.Context) string {
+	traceId, ok := ctx.Value("traceId").(string)
+	if !ok {
+		traceId = ""
+	}
+	return traceId
+}
+
+func GetTrace(ctx context.Context) string {
+	return fmt.Sprintf("%s %s", GetTraceId(ctx))
+}
+
+func SetTraceId(ctx context.Context, traceId string) context.Context {
+	return context.WithValue(ctx, "traceId", traceId)
+}
+
+func logRpcErr(ctx context.Context, request *transport.Transport, err error) {
+	hlog.Errorf(
+		fmt.Sprintf(
+			"rpc error: %s %s %d %s \n%s",
+			request.Addr,
+			request.Cmd,
+			request.Session,
+			err.Error(),
+			GetTrace(ctx),
+		),
+	)
+}
+
+func newTraceMW(cluster string) Middleware {
+	return func(next Endpoint) Endpoint {
+		return func(ctx context.Context, request, response *transport.Transport) error {
+			traceId := GetTraceId(ctx)
+			if traceId == "" {
+				SetTraceId(ctx, fmt.Sprintf("%s-%d", request.Meta.Uuid, request.Session))
+			}
+			return next(ctx, request, response)
+		}
+	}
 }
 
 func newActorMW() Middleware {
@@ -75,10 +133,17 @@ func newActorMW() Middleware {
 				_, err := asys.Root.RequestFuture(pid, &Message{
 					ctx:     ctx,
 					request: request,
-				}, time.Second*20).Result()
+				}, time.Second*30).Result()
+
 				if err != nil {
+					if errors.Is(err, actor.ErrTimeout) {
+						err = kerrors.ErrRPCTimeout.WithCause(err)
+					}
+					logRpcErr(ctx, request, err)
 					return err
 				}
+			} else {
+				return kerrors.ErrNoDestService
 			}
 			return next(ctx, request, response)
 		}
@@ -107,9 +172,13 @@ func NewServer(opts ...Option) Server {
 
 func (s *server) init() {
 	s.mws = richMWsWithBuilder(context.Background(), s.opt.MWBs, s)
-	amw := newActorMW()
 	emw := newErrorHandleMW(s.opt.ErrHandle)
-	s.mws = append(s.mws, emw, amw)
+	tmw := newTraceMW(s.opt.Name)
+	amw := newActorMW()
+
+	//  error handler first
+	s.mws = slices.Insert(s.mws, 0, emw)
+	s.mws = append(s.mws, tmw, amw)
 	eps := Chain(s.mws...)(nilEndpoint)
 	s.svc = transportSvc.NewServer(NewTransportServiceImpl(eps))
 }

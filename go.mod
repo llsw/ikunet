@@ -5,6 +5,7 @@ go 1.22.2
 require (
 	github.com/asynkron/protoactor-go v0.0.0-20240413045429-76c172a71a16
 	github.com/cloudwego/fastpb v0.0.4
+	github.com/cloudwego/hertz v0.8.1
 	github.com/cloudwego/kitex v0.9.1
 	google.golang.org/protobuf v1.33.0
 )
@@ -51,7 +52,7 @@ require (
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.11.1 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
-	github.com/tidwall/gjson v1.9.3 // indirect
+	github.com/tidwall/gjson v1.14.4 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
