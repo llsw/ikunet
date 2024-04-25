@@ -83,82 +83,59 @@ type Message struct {
 	response any
 }
 
-func GetTraceId(ctx context.Context) string {
-	traceId, ok := ctx.Value("traceId").(string)
-	if !ok {
-		traceId = ""
-	}
-	return traceId
-}
+type GetTraceId func(context.Context) string
+type SetTraceId func(ctx context.Context, request *transport.Transport) context.Context
 
-func TracesToBytes(cluster, svc, cmd string) ([]byte, error) {
-	return []byte{0, 0, 0, 0, 0, 0}, nil
-}
+type TracesToBytes func(cluster, svc, cmd string) ([]byte, error)
+type BytesToTraces func([]byte) (cluster, svc, cmd string)
 
-func IdToTraces(cluster, svc, cmd int) []string {
-	return []string{
-		string(cluster),
-		string(svc),
-		string(cmd),
-	}
-}
+// func GetTraceId(ctx context.Context) string {
+// 	traceId, ok := ctx.Value("traceId").(string)
+// 	if !ok {
+// 		traceId = ""
+// 	}
+// 	return traceId
+// }
 
-func BytesToTraces(traces []byte) ([]string, error) {
-	l := len(traces)
-	if l < 6 || l%6 != 0 {
-		return nil, kerrors.ErrInternalException.WithCause(errors.New("traces length error"))
-	}
-	res := make([]string, l/2)
-	for i := 0; i < l; i += 6 {
-		cluter := int(traces[i])*256 + int(traces[i+1])
-		svc := int(traces[i+2])*256 + int(traces[i+3])
-		cmd := int(traces[i+4])*256 + int(traces[i+5])
-		trs := IdToTraces(cluter, svc, cmd)
-		idx := i / 2
-		res[idx] = trs[0]
-		res[idx+1] = trs[1]
-		res[idx+2] = trs[2]
-	}
-	return res, nil
-}
+// func TracesToBytes(cluster, svc, cmd string) ([]byte, error) {
+// 	return []byte{0, 0, 0, 0, 0, 0}, nil
+// }
 
-func GetTrace(ctx context.Context, request *transport.Transport) string {
-	res, err := BytesToTraces(request.Traces)
-	var str string
-	if err != nil {
-		str = res[0]
-		for i := 1; i < len(res); i++ {
-			str = " " + res[i]
-		}
-	}
-	return fmt.Sprintf("%s %s", GetTraceId(ctx), str)
-}
+// func IdToTraces(cluster, svc, cmd int) []string {
+// 	return []string{
+// 		string(cluster),
+// 		string(svc),
+// 		string(cmd),
+// 	}
+// }
 
-func SetTraceId(ctx context.Context, traceId string) context.Context {
-	return context.WithValue(ctx, "traceId", traceId)
-}
+// func BytesToTraces(traces []byte) ([]string, error) {
+// 	l := len(traces)
+// 	if l < 6 || l%6 != 0 {
+// 		return nil, kerrors.ErrInternalException.WithCause(errors.New("traces length error"))
+// 	}
+// 	res := make([]string, l/2)
+// 	for i := 0; i < l; i += 6 {
+// 		cluter := int(traces[i])*256 + int(traces[i+1])
+// 		svc := int(traces[i+2])*256 + int(traces[i+3])
+// 		cmd := int(traces[i+4])*256 + int(traces[i+5])
+// 		trs := IdToTraces(cluter, svc, cmd)
+// 		idx := i / 2
+// 		res[idx] = trs[0]
+// 		res[idx+1] = trs[1]
+// 		res[idx+2] = trs[2]
+// 	}
+// 	return res, nil
+// }
 
-func logRpcErr(ctx context.Context, request *transport.Transport, err error) {
-	hlog.Errorf(
-		fmt.Sprintf(
-			"rpc error: %s %s %d %s \n%s",
-			request.Addr,
-			request.Cmd,
-			request.Session,
-			err.Error(),
-			GetTrace(ctx, request),
-		),
-	)
-}
-
-func newTraceMW(cluster string) Middleware {
+func newTraceMW(s *server) Middleware {
 	return func(next Endpoint) Endpoint {
 		return func(ctx context.Context, request, response *transport.Transport) error {
-			traceId := GetTraceId(ctx)
+			traceId := s.opt.GetTraceId(ctx)
 			if traceId == "" {
-				SetTraceId(ctx, fmt.Sprintf("%s-%d", request.Meta.Uuid, request.Session))
+				ctx = s.opt.SetTraceId(ctx, request)
 			}
-			trs, err := TracesToBytes(cluster, request.Addr, request.Cmd)
+			trs, err := s.opt.SetTrace(s.opt.Name, request.Addr, request.Cmd)
 			if err == nil {
 				request.Traces = append(request.Traces, trs...)
 			}
@@ -167,7 +144,7 @@ func newTraceMW(cluster string) Middleware {
 	}
 }
 
-func newActorMW() Middleware {
+func newActorMW(s *server) Middleware {
 	return func(next Endpoint) Endpoint {
 		return func(ctx context.Context, request, response *transport.Transport) error {
 			_, ok := asys.ProcessRegistry.GetLocal(request.Addr)
@@ -182,7 +159,7 @@ func newActorMW() Middleware {
 					if errors.Is(err, actor.ErrTimeout) {
 						err = kerrors.ErrRPCTimeout.WithCause(err)
 					}
-					logRpcErr(ctx, request, err)
+					s.logRpcErr(ctx, request, err)
 					return err
 				}
 			} else {
@@ -216,8 +193,8 @@ func NewServer(opts ...Option) Server {
 func (s *server) init() {
 	s.mws = richMWsWithBuilder(context.Background(), s.opt.MWBs, s)
 	emw := newErrorHandleMW(s.opt.ErrHandle)
-	tmw := newTraceMW(s.opt.Name)
-	amw := newActorMW()
+	tmw := newTraceMW(s)
+	amw := newActorMW(s)
 
 	//  error handler first
 	s.mws = slices.Insert(s.mws, 0, emw)
@@ -264,4 +241,20 @@ func (s *server) unregister() (err error) {
 		err = s.opt.UnRegister(s.GetServerInfo())
 	}
 	return
+}
+
+func (s *server) logRpcErr(ctx context.Context, request *transport.Transport, err error) {
+	cluster, addr, cmd := s.opt.GetTrace(request.Traces)
+	hlog.Errorf(
+		fmt.Sprintf(
+			"rpc error: %s %s %d %s \n%s %s %s",
+			request.Addr,
+			request.Cmd,
+			request.Session,
+			err.Error(),
+			cluster,
+			addr,
+			cmd,
+		),
+	)
 }
