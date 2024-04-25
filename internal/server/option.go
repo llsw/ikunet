@@ -95,8 +95,8 @@ func DefaultSetTraceId(ctx context.Context, request *transport.Transport) contex
 	return ctx
 }
 
-func DefaultSetTrace(cluster, svc, cmd string) ([]byte, error) {
-	return nil, nil
+func DefaultSetTrace(cluster, svc, cmd string) []byte {
+	return nil
 }
 func DefaultGetTrace([]byte) (cluster, svc, cmd string) {
 	return "", "", ""

@@ -86,7 +86,7 @@ type Message struct {
 type GetTraceId func(context.Context) string
 type SetTraceId func(ctx context.Context, request *transport.Transport) context.Context
 
-type TracesToBytes func(cluster, svc, cmd string) ([]byte, error)
+type TracesToBytes func(cluster, svc, cmd string) []byte
 type BytesToTraces func([]byte) (cluster, svc, cmd string)
 
 // func GetTraceId(ctx context.Context) string {
@@ -135,8 +135,8 @@ func newTraceMW(s *server) Middleware {
 			if traceId == "" {
 				ctx = s.opt.SetTraceId(ctx, request)
 			}
-			trs, err := s.opt.SetTrace(s.opt.Name, request.Addr, request.Cmd)
-			if err == nil {
+			trs := s.opt.SetTrace(s.opt.Name, request.Addr, request.Cmd)
+			if len(trs) > 0 {
 				request.Traces = append(request.Traces, trs...)
 			}
 			return next(ctx, request, response)
