@@ -1,4 +1,4 @@
-package server
+package knet
 
 import (
 	"context"
@@ -26,11 +26,11 @@ func Chain(mws ...Middleware) Middleware {
 	}
 }
 
-func richMWsWithBuilder(ctx context.Context, mwBs []MiddlewareBuilder, s *server) []Middleware {
+func richMWsWithBuilder(ctx context.Context, mwBs []MiddlewareBuilder, mws []Middleware) []Middleware {
 	for i := range mwBs {
-		s.mws = append(s.mws, mwBs[i](ctx))
+		mws = append(mws, mwBs[i](ctx))
 	}
-	return s.mws
+	return mws
 }
 
 func nilEndpoint(ctx context.Context, req, resp *transport.Transport) error {
@@ -79,7 +79,7 @@ func newActorMW(s *server) Middleware {
 				_, err := asys.Root.RequestFuture(pid, &Message{
 					ctx:     ctx,
 					request: request,
-				}, time.Second*30).Result()
+				}, time.Second*TIME_OUT).Result()
 
 				if err != nil {
 					if errors.Is(err, actor.ErrTimeout) {
@@ -89,6 +89,22 @@ func newActorMW(s *server) Middleware {
 				}
 			} else {
 				return kerrors.ErrNoDestService
+			}
+			return next(ctx, request, response)
+		}
+	}
+}
+
+func newCallMW(c *client) Middleware {
+	return func(next Endpoint) Endpoint {
+		return func(ctx context.Context, request, response *transport.Transport) (err error) {
+			ctx, cancel := context.WithTimeout(ctx, time.Second*TIME_OUT)
+			defer cancel()
+			response, err = c.client.Call(ctx, request)
+
+			if errors.Is(err, context.DeadlineExceeded) {
+				err = kerrors.ErrRPCTimeout.WithCause(err)
+				return
 			}
 			return next(ctx, request, response)
 		}

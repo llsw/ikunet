@@ -1,4 +1,4 @@
-package server
+package knet
 
 import (
 	"context"
@@ -64,21 +64,21 @@ type Server interface {
 }
 
 type server struct {
-	opt Options
+	opt *ServerOptions
 	svc ksvc.Server
 	mws []Middleware
 }
 
-func NewServer(opts ...Option) Server {
+func NewServer(opts ...ServerOption) Server {
 	s := &server{
-		opt: *NewOptions(opts),
+		opt: NewServerOptions(opts),
 	}
 	s.init()
 	return s
 }
 
 func (s *server) init() {
-	s.mws = richMWsWithBuilder(context.Background(), s.opt.MWBs, s)
+	s.mws = richMWsWithBuilder(context.Background(), s.opt.MWBs, s.mws)
 	emw := newErrorHandleMW(s)
 	tmw := newTraceMW(s)
 	amw := newActorMW(s)
@@ -110,6 +110,7 @@ func (s *server) Stop() (err error) {
 
 func (s *server) GetServerInfo() *ServerInfo {
 	return &ServerInfo{
+		Cluster: s.opt.Cluster,
 		Name:    s.opt.Name,
 		Address: s.opt.Address,
 		Version: s.opt.Version,

@@ -1,4 +1,4 @@
-package server
+package knet
 
 import (
 	"context"
@@ -17,18 +17,20 @@ func init() {
 }
 
 type ServerInfo struct {
+	Cluster string
 	Name    string
 	Version string
 	Address net.Addr
 }
 
-// Option is the only way to config a server.
-type Option struct {
-	F func(o *Options, di *utils.Slice)
+// ServerOption is the only way to config a server.
+type ServerOption struct {
+	F func(o *ServerOptions, di *utils.Slice)
 }
 
-// Options is used to initialize the server.
-type Options struct {
+// ServerOptions is used to initialize the server.
+type ServerOptions struct {
+	Cluster    string
 	Name       string
 	Version    string
 	Address    net.Addr
@@ -44,21 +46,21 @@ type Options struct {
 	SetTrace   TracesToBytes
 }
 
-// NewOptions creates a default options.
-func NewOptions(opts []Option) *Options {
-	o := &Options{
+// NewServerOptions creates a default options.
+func NewServerOptions(opts []ServerOption) *ServerOptions {
+	o := &ServerOptions{
 		ExitSignal: DefaultSysExitSignal,
 		GetTraceId: DefaultGetTraceId,
 		SetTraceId: DefaultSetTraceId,
 		GetTrace:   DefaultGetTrace,
 		SetTrace:   DefaultSetTrace,
 	}
-	ApplyOptions(opts, o)
+	ApplyServerOptions(opts, o)
 	return o
 }
 
-// ApplyOptions applies the given options.
-func ApplyOptions(opts []Option, o *Options) {
+// ApplyServerOptions applies the given options.
+func ApplyServerOptions(opts []ServerOption, o *ServerOptions) {
 	for _, op := range opts {
 		op.F(o, &o.DebugInfo)
 	}
