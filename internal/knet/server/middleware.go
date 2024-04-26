@@ -1,4 +1,4 @@
-package knet
+package server
 
 import (
 	"context"
@@ -6,40 +6,19 @@ import (
 	"time"
 
 	actor "github.com/asynkron/protoactor-go/actor"
-	kerrors "github.com/cloudwego/kitex/pkg/kerrors"
+	"github.com/cloudwego/kitex/pkg/kerrors"
 	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
+	knet "github.com/llsw/ikunet/internal/knet"
+	midw "github.com/llsw/ikunet/internal/knet/middleware"
 )
-
-type Endpoint func(ctx context.Context, req, resp *transport.Transport) (err error)
-
-type Middleware func(Endpoint) Endpoint
-
-type MiddlewareBuilder func(ctx context.Context) Middleware
-
-// Chain connect middlewares into one middleware.
-func Chain(mws ...Middleware) Middleware {
-	return func(next Endpoint) Endpoint {
-		for i := len(mws) - 1; i >= 0; i-- {
-			next = mws[i](next)
-		}
-		return next
-	}
-}
-
-func richMWsWithBuilder(ctx context.Context, mwBs []MiddlewareBuilder, mws []Middleware) []Middleware {
-	for i := range mwBs {
-		mws = append(mws, mwBs[i](ctx))
-	}
-	return mws
-}
 
 func nilEndpoint(ctx context.Context, req, resp *transport.Transport) error {
 	return nil
 }
 
 // newErrorHandleMW provides a hook point for server error handling.
-func newErrorHandleMW(s *server) Middleware {
-	return func(next Endpoint) Endpoint {
+func newErrorHandleMW(s *server) midw.Middleware {
+	return func(next midw.Endpoint) midw.Endpoint {
 		return func(ctx context.Context, request, response *transport.Transport) error {
 			err := next(ctx, request, response)
 			if err == nil {
@@ -54,8 +33,8 @@ func newErrorHandleMW(s *server) Middleware {
 	}
 }
 
-func newTraceMW(s *server) Middleware {
-	return func(next Endpoint) Endpoint {
+func newTraceMW(s *server) midw.Middleware {
+	return func(next midw.Endpoint) midw.Endpoint {
 		return func(ctx context.Context, request, response *transport.Transport) error {
 			traceId := s.opt.GetTraceId(ctx)
 			if traceId == "" {
@@ -70,8 +49,8 @@ func newTraceMW(s *server) Middleware {
 	}
 }
 
-func newActorMW(s *server) Middleware {
-	return func(next Endpoint) Endpoint {
+func newActorMW(s *server) midw.Middleware {
+	return func(next midw.Endpoint) midw.Endpoint {
 		return func(ctx context.Context, request, response *transport.Transport) error {
 			_, ok := asys.ProcessRegistry.GetLocal(request.Addr)
 			if ok {
@@ -79,7 +58,7 @@ func newActorMW(s *server) Middleware {
 				_, err := asys.Root.RequestFuture(pid, &Message{
 					ctx:     ctx,
 					request: request,
-				}, time.Second*TIME_OUT).Result()
+				}, time.Second*knet.TIME_OUT).Result()
 
 				if err != nil {
 					if errors.Is(err, actor.ErrTimeout) {
@@ -89,22 +68,6 @@ func newActorMW(s *server) Middleware {
 				}
 			} else {
 				return kerrors.ErrNoDestService
-			}
-			return next(ctx, request, response)
-		}
-	}
-}
-
-func newCallMW(c *client) Middleware {
-	return func(next Endpoint) Endpoint {
-		return func(ctx context.Context, request, response *transport.Transport) (err error) {
-			ctx, cancel := context.WithTimeout(ctx, time.Second*TIME_OUT)
-			defer cancel()
-			response, err = c.client.Call(ctx, request)
-
-			if errors.Is(err, context.DeadlineExceeded) {
-				err = kerrors.ErrRPCTimeout.WithCause(err)
-				return
 			}
 			return next(ctx, request, response)
 		}

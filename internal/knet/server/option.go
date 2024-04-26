@@ -1,4 +1,4 @@
-package knet
+package server
 
 import (
 	"context"
@@ -11,25 +11,28 @@ import (
 	"github.com/cloudwego/kitex/pkg/gofunc"
 	"github.com/cloudwego/kitex/pkg/utils"
 	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
+	knet "github.com/llsw/ikunet/internal/knet"
+	midw "github.com/llsw/ikunet/internal/knet/middleware"
+	trace "github.com/llsw/ikunet/internal/knet/trace"
 )
 
 func init() {
 }
 
-type ServerInfo struct {
+type Info struct {
 	Cluster string
 	Name    string
 	Version string
 	Address net.Addr
 }
 
-// ServerOption is the only way to config a server.
-type ServerOption struct {
-	F func(o *ServerOptions, di *utils.Slice)
+// Option is the only way to config a server.
+type Option struct {
+	F func(o *Options, di *utils.Slice)
 }
 
-// ServerOptions is used to initialize the server.
-type ServerOptions struct {
+// Options is used to initialize the server.
+type Options struct {
 	Cluster    string
 	Name       string
 	Version    string
@@ -37,30 +40,30 @@ type ServerOptions struct {
 	ErrHandle  func(context.Context, error) error
 	ExitSignal func() <-chan error
 	DebugInfo  utils.Slice
-	Register   func(info *ServerInfo) error
-	UnRegister func(info *ServerInfo) error
-	MWBs       []MiddlewareBuilder
-	GetTraceId GetTraceId
-	SetTraceId SetTraceId
-	GetTrace   BytesToTraces
-	SetTrace   TracesToBytes
+	Register   func(info *Info) error
+	UnRegister func(info *Info) error
+	MWBs       []midw.MiddlewareBuilder
+	GetTraceId trace.GetTraceId
+	SetTraceId trace.SetTraceId
+	GetTrace   trace.BytesToTraces
+	SetTrace   trace.TracesToBytes
 }
 
-// NewServerOptions creates a default options.
-func NewServerOptions(opts []ServerOption) *ServerOptions {
-	o := &ServerOptions{
+// NewOptions creates a default options.
+func NewOptions(opts []Option) *Options {
+	o := &Options{
 		ExitSignal: DefaultSysExitSignal,
 		GetTraceId: DefaultGetTraceId,
 		SetTraceId: DefaultSetTraceId,
 		GetTrace:   DefaultGetTrace,
 		SetTrace:   DefaultSetTrace,
 	}
-	ApplyServerOptions(opts, o)
+	ApplyOptions(opts, o)
 	return o
 }
 
-// ApplyServerOptions applies the given options.
-func ApplyServerOptions(opts []ServerOption, o *ServerOptions) {
+// ApplyOptions applies the given options.
+func ApplyOptions(opts []Option, o *Options) {
 	for _, op := range opts {
 		op.F(o, &o.DebugInfo)
 	}
@@ -88,12 +91,12 @@ func SysExitSignal() chan os.Signal {
 }
 
 func DefaultGetTraceId(ctx context.Context) string {
-	return ctx.Value(TRACEID_KEY).(string)
+	return ctx.Value(knet.TRACEID_KEY).(string)
 }
 
 func DefaultSetTraceId(ctx context.Context, request *transport.Transport) context.Context {
 	traceId := fmt.Sprintf("%s-%d", request.Meta.Uuid, request.Session)
-	ctx = context.WithValue(ctx, TRACEID_KEY, traceId)
+	ctx = context.WithValue(ctx, knet.TRACEID_KEY, traceId)
 	return ctx
 }
 

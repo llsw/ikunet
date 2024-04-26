@@ -1,4 +1,4 @@
-package knet
+package server
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	ksvc "github.com/cloudwego/kitex/server"
 	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
 	transportSvc "github.com/llsw/ikunet/internal/kitex_gen/transport/transportservice"
+	midw "github.com/llsw/ikunet/internal/knet/middleware"
 )
 
 var (
@@ -27,10 +28,10 @@ func GetActorSystem() *actor.ActorSystem {
 
 // TransportServiceImpl implements the last service interface defined in the IDL.
 type TransportServiceImpl struct {
-	eps Endpoint
+	eps midw.Endpoint
 }
 
-func NewTransportServiceImpl(eps Endpoint) *TransportServiceImpl {
+func NewTransportServiceImpl(eps midw.Endpoint) *TransportServiceImpl {
 	return &TransportServiceImpl{
 		eps: eps,
 	}
@@ -60,25 +61,25 @@ type Message struct {
 type Server interface {
 	Run() error
 	Stop() error
-	GetServerInfo() *ServerInfo
+	GetServerInfo() *Info
 }
 
 type server struct {
-	opt *ServerOptions
+	opt *Options
 	svc ksvc.Server
-	mws []Middleware
+	mws []midw.Middleware
 }
 
-func NewServer(opts ...ServerOption) Server {
+func NewServer(opts ...Option) Server {
 	s := &server{
-		opt: NewServerOptions(opts),
+		opt: NewOptions(opts),
 	}
 	s.init()
 	return s
 }
 
 func (s *server) init() {
-	s.mws = richMWsWithBuilder(context.Background(), s.opt.MWBs, s.mws)
+	s.mws = midw.RichMWsWithBuilder(context.Background(), s.opt.MWBs, s.mws)
 	emw := newErrorHandleMW(s)
 	tmw := newTraceMW(s)
 	amw := newActorMW(s)
@@ -86,7 +87,7 @@ func (s *server) init() {
 	//  error handler first
 	s.mws = slices.Insert(s.mws, 0, emw)
 	s.mws = append(s.mws, tmw, amw)
-	eps := Chain(s.mws...)(nilEndpoint)
+	eps := midw.Chain(s.mws...)(nilEndpoint)
 	s.svc = transportSvc.NewServer(NewTransportServiceImpl(eps))
 }
 
@@ -108,8 +109,8 @@ func (s *server) Stop() (err error) {
 	return
 }
 
-func (s *server) GetServerInfo() *ServerInfo {
-	return &ServerInfo{
+func (s *server) GetServerInfo() *Info {
+	return &Info{
 		Cluster: s.opt.Cluster,
 		Name:    s.opt.Name,
 		Address: s.opt.Address,

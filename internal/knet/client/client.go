@@ -1,8 +1,10 @@
-package knet
+package client
 
 import (
 	"context"
 	"errors"
+
+	midw "github.com/llsw/ikunet/internal/knet/middleware"
 
 	kclient "github.com/cloudwego/kitex/client"
 	kerrors "github.com/cloudwego/kitex/pkg/kerrors"
@@ -19,15 +21,15 @@ type Client interface {
 }
 
 type client struct {
-	opt    *ClientOptions
+	opt    *Options
 	client transportSvc.Client
-	mws    []Middleware
-	eps    Endpoint
+	mws    []midw.Middleware
+	eps    midw.Endpoint
 }
 
-func NewClient(opts ...ClientOption) (Client, error) {
+func NewClient(opts ...Option) (Client, error) {
 	c := &client{
-		opt: NewClientOptions(opts),
+		opt: NewOptions(opts),
 	}
 	err := c.init()
 	return c, err
@@ -38,7 +40,7 @@ func (c *client) init() (err error) {
 	if err != nil {
 		return
 	}
-	c.mws = richMWsWithBuilder(context.Background(), c.opt.MWBs, c.mws)
+	c.mws = midw.RichMWsWithBuilder(context.Background(), c.opt.MWBs, c.mws)
 	return
 }
 
