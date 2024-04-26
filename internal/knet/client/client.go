@@ -2,12 +2,13 @@ package client
 
 import (
 	"context"
-	"errors"
+	"fmt"
+	"slices"
 
 	midw "github.com/llsw/ikunet/internal/knet/middleware"
 
+	"github.com/cloudwego/hertz/pkg/common/hlog"
 	kclient "github.com/cloudwego/kitex/client"
-	kerrors "github.com/cloudwego/kitex/pkg/kerrors"
 	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
 	transportSvc "github.com/llsw/ikunet/internal/kitex_gen/transport/transportservice"
 )
@@ -41,13 +42,37 @@ func (c *client) init() (err error) {
 		return
 	}
 	c.mws = midw.RichMWsWithBuilder(context.Background(), c.opt.MWBs, c.mws)
+	emw := newErrorHandleMW(c)
+	// tmw := newTraceMW(s)
+	amw := newCallMW(c)
+	//  error handler first
+	c.mws = slices.Insert(c.mws, 0, emw)
+	c.mws = append(c.mws, amw)
+	c.eps = midw.Chain(c.mws...)(midw.NilEndpoint)
 	return
 }
 
 func (c *client) Call(ctx context.Context, request *transport.Transport) (response *transport.Transport, err error) {
 	response = &transport.Transport{}
-	err = kerrors.ErrRPCTimeout.WithCause(errors.New("unimplement"))
+	// err = kerrors.ErrRPCTimeout.WithCause(errors.New("unimplement"))
+	err = c.eps(ctx, request, response)
 	return
+}
+
+func (c *client) logRpcErr(ctx context.Context, request *transport.Transport, err error) {
+	cluster, addr, cmd := c.opt.GetTrace(request.Traces)
+	hlog.Errorf(
+		fmt.Sprintf(
+			"rpc error: %s %s %d %s \n%s %s %s",
+			request.Addr,
+			request.Cmd,
+			request.Session,
+			err.Error(),
+			cluster,
+			addr,
+			cmd,
+		),
+	)
 }
 
 // client, err := echo.NewClient("echo", client.WithResolver(p2p.NewP2PResolver("tcp", ":8888")))

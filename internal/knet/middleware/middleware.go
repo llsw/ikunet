@@ -28,3 +28,7 @@ func RichMWsWithBuilder(ctx context.Context, mwBs []MiddlewareBuilder, mws []Mid
 	}
 	return mws
 }
+
+func NilEndpoint(ctx context.Context, req, resp *transport.Transport) error {
+	return nil
+}

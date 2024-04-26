@@ -2,8 +2,10 @@ package trace
 
 import (
 	"context"
+	"fmt"
 
 	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
+	knet "github.com/llsw/ikunet/internal/knet"
 )
 
 type GetTraceId func(context.Context) string
@@ -11,6 +13,23 @@ type SetTraceId func(ctx context.Context, request *transport.Transport) context.
 
 type TracesToBytes func(cluster, svc, cmd string) []byte
 type BytesToTraces func([]byte) (cluster, svc, cmd string)
+
+func DefaultGetTraceId(ctx context.Context) string {
+	return ctx.Value(knet.TRACEID_KEY).(string)
+}
+
+func DefaultSetTraceId(ctx context.Context, request *transport.Transport) context.Context {
+	traceId := fmt.Sprintf("%s-%d", request.Meta.Uuid, request.Session)
+	ctx = context.WithValue(ctx, knet.TRACEID_KEY, traceId)
+	return ctx
+}
+
+func DefaultSetTrace(cluster, svc, cmd string) []byte {
+	return nil
+}
+func DefaultGetTrace([]byte) (cluster, svc, cmd string) {
+	return "", "", ""
+}
 
 // func GetTraceId(ctx context.Context) string {
 // 	traceId, ok := ctx.Value("traceId").(string)

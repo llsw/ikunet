@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -10,8 +9,6 @@ import (
 
 	"github.com/cloudwego/kitex/pkg/gofunc"
 	"github.com/cloudwego/kitex/pkg/utils"
-	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
-	knet "github.com/llsw/ikunet/internal/knet"
 	midw "github.com/llsw/ikunet/internal/knet/middleware"
 	trace "github.com/llsw/ikunet/internal/knet/trace"
 )
@@ -53,10 +50,10 @@ type Options struct {
 func NewOptions(opts []Option) *Options {
 	o := &Options{
 		ExitSignal: DefaultSysExitSignal,
-		GetTraceId: DefaultGetTraceId,
-		SetTraceId: DefaultSetTraceId,
-		GetTrace:   DefaultGetTrace,
-		SetTrace:   DefaultSetTrace,
+		GetTraceId: trace.DefaultGetTraceId,
+		SetTraceId: trace.DefaultSetTraceId,
+		GetTrace:   trace.DefaultGetTrace,
+		SetTrace:   trace.DefaultSetTrace,
 	}
 	ApplyOptions(opts, o)
 	return o
@@ -88,21 +85,4 @@ func SysExitSignal() chan os.Signal {
 	}
 	signal.Notify(signals, notifications...)
 	return signals
-}
-
-func DefaultGetTraceId(ctx context.Context) string {
-	return ctx.Value(knet.TRACEID_KEY).(string)
-}
-
-func DefaultSetTraceId(ctx context.Context, request *transport.Transport) context.Context {
-	traceId := fmt.Sprintf("%s-%d", request.Meta.Uuid, request.Session)
-	ctx = context.WithValue(ctx, knet.TRACEID_KEY, traceId)
-	return ctx
-}
-
-func DefaultSetTrace(cluster, svc, cmd string) []byte {
-	return nil
-}
-func DefaultGetTrace([]byte) (cluster, svc, cmd string) {
-	return "", "", ""
 }

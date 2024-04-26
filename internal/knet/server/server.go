@@ -87,7 +87,7 @@ func (s *server) init() {
 	//  error handler first
 	s.mws = slices.Insert(s.mws, 0, emw)
 	s.mws = append(s.mws, tmw, amw)
-	eps := midw.Chain(s.mws...)(nilEndpoint)
+	eps := midw.Chain(s.mws...)(midw.NilEndpoint)
 	s.svc = transportSvc.NewServer(NewTransportServiceImpl(eps))
 }
 

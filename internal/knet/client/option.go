@@ -7,6 +7,7 @@ import (
 	"github.com/cloudwego/kitex/pkg/discovery"
 	"github.com/cloudwego/kitex/pkg/utils"
 	midw "github.com/llsw/ikunet/internal/knet/middleware"
+	"github.com/llsw/ikunet/internal/knet/trace"
 )
 
 func init() {
@@ -26,19 +27,28 @@ type Option struct {
 
 // Options is used to initialize the server.
 type Options struct {
-	Cluster   string
-	Name      string
-	Version   string
-	Address   net.Addr
-	ErrHandle func(context.Context, error) error
-	DebugInfo utils.Slice
-	Resolver  discovery.Resolver
-	MWBs      []midw.MiddlewareBuilder
+	Cluster    string
+	Name       string
+	Version    string
+	Address    net.Addr
+	ErrHandle  func(context.Context, error) error
+	DebugInfo  utils.Slice
+	Resolver   discovery.Resolver
+	MWBs       []midw.MiddlewareBuilder
+	GetTraceId trace.GetTraceId
+	SetTraceId trace.SetTraceId
+	GetTrace   trace.BytesToTraces
+	SetTrace   trace.TracesToBytes
 }
 
 // NewOptions creates a default options.
 func NewOptions(opts []Option) *Options {
-	o := &Options{}
+	o := &Options{
+		GetTraceId: trace.DefaultGetTraceId,
+		SetTraceId: trace.DefaultSetTraceId,
+		GetTrace:   trace.DefaultGetTrace,
+		SetTrace:   trace.DefaultSetTrace,
+	}
 	ApplyOptions(opts, o)
 	return o
 }
