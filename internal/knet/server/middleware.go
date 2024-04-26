@@ -12,10 +12,6 @@ import (
 	midw "github.com/llsw/ikunet/internal/knet/middleware"
 )
 
-func nilEndpoint(ctx context.Context, req, resp *transport.Transport) error {
-	return nil
-}
-
 // newErrorHandleMW provides a hook point for server error handling.
 func newErrorHandleMW(s *server) midw.Middleware {
 	return func(next midw.Endpoint) midw.Endpoint {
