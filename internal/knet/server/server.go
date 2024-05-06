@@ -92,6 +92,7 @@ func (s *server) init() {
 	eps := midw.Chain(s.mws...)(midw.NilEndpoint)
 	s.svc = transportSvc.NewServer(
 		NewTransportServiceImpl(eps),
+		ksvc.WithServiceAddr(s.opt.Address),
 		ksvc.WithRegistry(s.opt.Retry),
 		ksvc.WithServerBasicInfo(
 			&rpcinfo.EndpointBasicInfo{
