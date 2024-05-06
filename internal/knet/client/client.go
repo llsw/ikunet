@@ -9,6 +9,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	kclient "github.com/cloudwego/kitex/client"
+	"github.com/cloudwego/kitex/pkg/discovery"
 	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
 	transportSvc "github.com/llsw/ikunet/internal/kitex_gen/transport/transportservice"
 )
@@ -57,6 +58,10 @@ func (c *client) Call(ctx context.Context, request *transport.Transport) (respon
 	// err = kerrors.ErrRPCTimeout.WithCause(errors.New("unimplement"))
 	err = c.eps(ctx, request, response)
 	return
+}
+
+func (c *client) GetResolver() discovery.Resolver {
+	return c.opt.Resolver
 }
 
 func (c *client) logRpcErr(ctx context.Context, request *transport.Transport, err error) {

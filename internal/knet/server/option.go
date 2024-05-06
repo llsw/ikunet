@@ -7,7 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/cloudwego/kitex/pkg/discovery"
 	"github.com/cloudwego/kitex/pkg/gofunc"
+	"github.com/cloudwego/kitex/pkg/registry"
 	"github.com/cloudwego/kitex/pkg/utils"
 	midw "github.com/llsw/ikunet/internal/knet/middleware"
 	trace "github.com/llsw/ikunet/internal/knet/trace"
@@ -44,6 +46,8 @@ type Options struct {
 	SetTraceId trace.SetTraceId
 	GetTrace   trace.BytesToTraces
 	SetTrace   trace.TracesToBytes
+	Retry      registry.Registry
+	Resolver   discovery.Resolver
 }
 
 // NewOptions creates a default options.

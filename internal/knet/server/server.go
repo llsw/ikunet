@@ -7,6 +7,8 @@ import (
 
 	actor "github.com/asynkron/protoactor-go/actor"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
+	"github.com/cloudwego/kitex/pkg/discovery"
+	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	ksvc "github.com/cloudwego/kitex/server"
 	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
 	transportSvc "github.com/llsw/ikunet/internal/kitex_gen/transport/transportservice"
@@ -88,7 +90,15 @@ func (s *server) init() {
 	s.mws = slices.Insert(s.mws, 0, emw)
 	s.mws = append(s.mws, tmw, amw)
 	eps := midw.Chain(s.mws...)(midw.NilEndpoint)
-	s.svc = transportSvc.NewServer(NewTransportServiceImpl(eps))
+	s.svc = transportSvc.NewServer(
+		NewTransportServiceImpl(eps),
+		ksvc.WithRegistry(s.opt.Retry),
+		ksvc.WithServerBasicInfo(
+			&rpcinfo.EndpointBasicInfo{
+				ServiceName: s.GetServerInfo().Name,
+			},
+		),
+	)
 }
 
 func (s *server) Run() (err error) {
@@ -116,6 +126,10 @@ func (s *server) GetServerInfo() *Info {
 		Address: s.opt.Address,
 		Version: s.opt.Version,
 	}
+}
+
+func (s *server) GetResolver() discovery.Resolver {
+	return s.opt.Resolver
 }
 
 func (s *server) register() (err error) {
