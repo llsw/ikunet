@@ -39,3 +39,11 @@ func WithEtcdResolver(endpoints []string, opts ...etcd.Option) kclient.Option {
 		},
 	}
 }
+
+func WithBalancer() kclient.Option {
+	return kclient.Option{
+		F: func(o *kclient.Options, di *utils.Slice) {
+			o.Balancer = &balancer{}
+		},
+	}
+}

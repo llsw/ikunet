@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	_ loadbalance.Loadbalancer = &balancer{}
-	_ loadbalance.Picker       = &picker{}
+	_   loadbalance.Loadbalancer = &balancer{}
+	pic loadbalance.Picker       = &picker{}
 )
 
 type picker struct {
@@ -31,9 +31,9 @@ type balancer struct {
 }
 
 func (b *balancer) GetPicker(dr discovery.Result) loadbalance.Picker {
-	return &picker{
-		dr: &dr,
-	}
+	// 每次都要赋值，防止服务发现结果改变了
+	pic.(*picker).dr = &dr
+	return pic
 }
 
 func (b *balancer) Name() string {
