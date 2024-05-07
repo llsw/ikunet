@@ -15,19 +15,21 @@ type TracesToBytes func(cluster, svc, cmd string) []byte
 type BytesToTraces func([]byte) (cluster, svc, cmd string)
 
 func DefaultGetTraceId(ctx context.Context) string {
-	return ctx.Value(knet.TRACEID_KEY).(string)
+	return ctx.Value(knet.CtxKey(knet.TRACEID_KEY)).(string)
 }
 
 func DefaultSetTraceId(ctx context.Context, request *transport.Transport) context.Context {
 	traceId := fmt.Sprintf("%s-%d", request.Meta.Uuid, request.Session)
-	ctx = context.WithValue(ctx, knet.TRACEID_KEY, traceId)
+	ctx = context.WithValue(ctx, knet.CtxKey(knet.TRACEID_KEY), traceId)
 	return ctx
 }
 
 func DefaultSetTrace(cluster, svc, cmd string) []byte {
-	return nil
+	// TODO trace 压缩
+	return []byte{0, 0, 0, 0, 0, 0}
 }
 func DefaultGetTrace([]byte) (cluster, svc, cmd string) {
+	// TODO trace 还原
 	return "", "", ""
 }
 
