@@ -33,12 +33,16 @@ func NewClient(opts ...Option) (Client, error) {
 	c := &client{
 		opt: NewOptions(opts),
 	}
+	if c.opt.Resolver == nil {
+		// 如果resolver为空，则使用默认的etcd resolver
+		// kdisc.WithEtcdResolver()
+	}
 	err := c.init()
 	return c, err
 }
 
 func (c *client) init() (err error) {
-	c.client, err = transportSvc.NewClient(c.opt.Name, kclient.WithResolver(c.opt.Resolver))
+	c.client, err = transportSvc.NewClient(c.opt.Name, kclient.WithResolver(c.opt.Resolver), kclient.WithLoadBalancer(c.opt.Balancer))
 	if err != nil {
 		return
 	}
