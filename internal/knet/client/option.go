@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/cloudwego/kitex/pkg/discovery"
+	"github.com/cloudwego/kitex/pkg/loadbalance"
 	"github.com/cloudwego/kitex/pkg/utils"
 	midw "github.com/llsw/ikunet/internal/knet/middleware"
 	"github.com/llsw/ikunet/internal/knet/trace"
@@ -34,6 +35,7 @@ type Options struct {
 	ErrHandle  func(context.Context, error) error
 	DebugInfo  utils.Slice
 	Resolver   discovery.Resolver
+	Balancer   loadbalance.Loadbalancer
 	MWBs       []midw.MiddlewareBuilder
 	GetTraceId trace.GetTraceId
 	SetTraceId trace.SetTraceId

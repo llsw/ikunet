@@ -90,13 +90,19 @@ func (s *server) init() {
 	s.mws = slices.Insert(s.mws, 0, emw)
 	s.mws = append(s.mws, tmw, amw)
 	eps := midw.Chain(s.mws...)(midw.NilEndpoint)
+	info := s.GetServerInfo()
 	s.svc = transportSvc.NewServer(
 		NewTransportServiceImpl(eps),
 		ksvc.WithServiceAddr(s.opt.Address),
 		ksvc.WithRegistry(s.opt.Retry),
 		ksvc.WithServerBasicInfo(
 			&rpcinfo.EndpointBasicInfo{
-				ServiceName: s.GetServerInfo().Name,
+				ServiceName: info.Name,
+				// 增加tag，tag可包含服务版本
+				Tags: map[string]string{
+					"version": info.Version,
+					"cluster": info.Cluster,
+				},
 			},
 		),
 	)
