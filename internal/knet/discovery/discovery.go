@@ -5,6 +5,7 @@ import (
 	"github.com/cloudwego/kitex/pkg/utils"
 	etcd "github.com/kitex-contrib/registry-etcd"
 	"github.com/kitex-contrib/registry-etcd/retry"
+	balance "github.com/llsw/ikunet/internal/knet/balance"
 	kclient "github.com/llsw/ikunet/internal/knet/client"
 	kserver "github.com/llsw/ikunet/internal/knet/server"
 )
@@ -43,7 +44,15 @@ func WithEtcdResolver(endpoints []string, opts ...etcd.Option) kclient.Option {
 func WithBalancer() kclient.Option {
 	return kclient.Option{
 		F: func(o *kclient.Options, di *utils.Slice) {
-			o.Balancer = &balancer{}
+			o.Balancer = &balance.Balancer{}
+		},
+	}
+}
+
+func WithBalancerCalls(calls []string) kserver.Option {
+	return kserver.Option{
+		F: func(o *kserver.Options, di *utils.Slice) {
+			o.BalancerCalls = calls
 		},
 	}
 }

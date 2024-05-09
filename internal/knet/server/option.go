@@ -23,6 +23,8 @@ type Info struct {
 	Name    string
 	Version string
 	Address net.Addr
+	Type    string
+	Id      string
 }
 
 // Option is the only way to config a server.
@@ -32,22 +34,25 @@ type Option struct {
 
 // Options is used to initialize the server.
 type Options struct {
-	Cluster    string
-	Name       string
-	Version    string
-	Address    net.Addr
-	ErrHandle  func(context.Context, error) error
-	ExitSignal func() <-chan error
-	DebugInfo  utils.Slice
-	Register   func(info *Info) error
-	UnRegister func(info *Info) error
-	MWBs       []midw.MiddlewareBuilder
-	GetTraceId trace.GetTraceId
-	SetTraceId trace.SetTraceId
-	GetTrace   trace.BytesToTraces
-	SetTrace   trace.TracesToBytes
-	Retry      registry.Registry
-	Resolver   discovery.Resolver
+	Cluster       string
+	Name          string
+	Version       string
+	Address       net.Addr
+	Type          string
+	Id            string
+	ErrHandle     func(context.Context, error) error
+	ExitSignal    func() <-chan error
+	DebugInfo     utils.Slice
+	Register      func(info *Info) error
+	UnRegister    func(info *Info) error
+	MWBs          []midw.MiddlewareBuilder
+	GetTraceId    trace.GetTraceId
+	SetTraceId    trace.SetTraceId
+	GetTrace      trace.BytesToTraces
+	SetTrace      trace.TracesToBytes
+	Retry         registry.Registry
+	Resolver      discovery.Resolver
+	BalancerCalls []string
 }
 
 // NewOptions creates a default options.

@@ -12,6 +12,7 @@ import (
 	ksvc "github.com/cloudwego/kitex/server"
 	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
 	transportSvc "github.com/llsw/ikunet/internal/kitex_gen/transport/transportservice"
+	balance "github.com/llsw/ikunet/internal/knet/balance"
 	midw "github.com/llsw/ikunet/internal/knet/middleware"
 )
 
@@ -80,6 +81,22 @@ func NewServer(opts ...Option) Server {
 	return s
 }
 
+func (s *server) serverTags(info *Info) map[string]string {
+	tags := make(map[string]string)
+	tags[balance.TAG_VERSION] = info.Version
+	tags[balance.TAG_CLUSTER] = info.Cluster
+	tags[balance.TAG_TYPE] = info.Type
+	tags[balance.TAG_TYPE] = info.Id
+
+	if len(s.opt.BalancerCalls) > 0 {
+		for _, v := range s.opt.BalancerCalls {
+			tags[balance.GetBlCallKey(v)] = ""
+		}
+	}
+
+	return tags
+}
+
 func (s *server) init() {
 	s.mws = midw.RichMWsWithBuilder(context.Background(), s.opt.MWBs, s.mws)
 	emw := newErrorHandleMW(s)
@@ -91,6 +108,7 @@ func (s *server) init() {
 	s.mws = append(s.mws, tmw, amw)
 	eps := midw.Chain(s.mws...)(midw.NilEndpoint)
 	info := s.GetServerInfo()
+
 	s.svc = transportSvc.NewServer(
 		NewTransportServiceImpl(eps),
 		ksvc.WithServiceAddr(s.opt.Address),
@@ -99,10 +117,7 @@ func (s *server) init() {
 			&rpcinfo.EndpointBasicInfo{
 				ServiceName: info.Name,
 				// 增加tag，tag可包含服务版本
-				Tags: map[string]string{
-					"version": info.Version,
-					"cluster": info.Cluster,
-				},
+				Tags: s.serverTags(info),
 			},
 		),
 	)
