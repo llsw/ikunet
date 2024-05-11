@@ -23,6 +23,8 @@ const (
 	TAG_ID       = "id"
 	TAG_TYPE     = "type"
 	TAG_MAINTAIN = "maintain"
+
+	TYPE_STATEFUL = "1"
 )
 
 type picker struct {
@@ -49,8 +51,7 @@ func getNewVer(uuid string, dr *discovery.Result) string {
 				continue
 			}
 		}
-		// TODO 做负载均衡
-		// TODO 如果有TAG_TYPE, 还要判断是有状态还是无状态，有状态需要根据查缓存，找出TAG_ID 看是原来走的是哪个
+
 		if vt, ok := v.Tag(TAG_VERSION); ok {
 			if vt > ver {
 				ver = vt
@@ -60,31 +61,55 @@ func getNewVer(uuid string, dr *discovery.Result) string {
 	return ver
 }
 
-func (p *picker) Next(ctx context.Context, request interface{}) discovery.Instance {
-	req := request.(*transport.Transport)
-	cmd := req.GetCmd()
-	uuid := req.GetMeta().GetUuid()
-	var ver string
-	vck := fmt.Sprintf("%s_%s", uuid, p.dr.CacheKey)
+func isStateful(ins discovery.Instance) bool {
+	if v, ok := ins.Tag(TAG_TYPE); ok {
+		if v == TYPE_STATEFUL {
+			return true
+		}
+	}
+	return false
+}
+
+func getVer(uuid string, cmd string, dr *discovery.Result) (string, bool) {
+	var (
+		ver   string
+		isNew bool
+	)
+	vck := fmt.Sprintf("%s_%s_ver", uuid, dr.CacheKey)
 	if cv, ok := cache.Get(vck); !ok {
-		ver = getNewVer(uuid, p.dr)
+		ver = getNewVer(uuid, dr)
+		isNew = true
 	} else {
 		ver = cv.(string)
 	}
 
-	if _, ok := p.dr.Instances[0].Tag(GetBlCallKey(cmd)); ok {
-		newVer := getNewVer(uuid, p.dr)
+	if _, ok := dr.Instances[0].Tag(GetBlCallKey(cmd)); ok {
+		newVer := getNewVer(uuid, dr)
 		if ver != newVer {
+			isNew = true
 			cache.Set(vck, newVer)
 			ver = newVer
 		}
 	}
+	return ver, isNew
+}
 
-	for _, v := range p.dr.Instances {
-		// TODO: 负载均衡
-		if iv, ok := v.Tag(TAG_MAINTAIN); ok {
-			if iv == ver {
-				return v
+func (p *picker) Next(ctx context.Context, request interface{}) discovery.Instance {
+	req := request.(*transport.Transport)
+	cmd := req.GetCmd()
+	uuid := req.GetMeta().GetUuid()
+	ver, isNew := getVer(uuid, cmd, p.dr)
+	// 不是新的又是有状态的服务，那就走原来的服务
+	if !isNew && isStateful(p.dr.Instances[0]) {
+
+	} else {
+		for _, v := range p.dr.Instances {
+			// TODO: 负载均衡
+			// TODO 如果有TAG_TYPE, 还要判断是有状态还是无状态，有状态需要根据查缓存，找出TAG_ID 看是原来走的是哪个
+			if iv, ok := v.Tag(TAG_MAINTAIN); ok {
+				if iv == ver {
+					return v
+				}
 			}
 		}
 	}
