@@ -101,15 +101,17 @@ func (p *picker) Next(ctx context.Context, request interface{}) discovery.Instan
 	ver, isNew := getVer(uuid, cmd, p.dr)
 	// 不是新的又是有状态的服务，那就走原来的服务
 	if !isNew && isStateful(p.dr.Instances[0]) {
+		ick := fmt.Sprintf("%s_%s_stf", uuid, p.dr.CacheKey)
+		if ins, ok := cache.Get(ick); ok {
+			return ins.(discovery.Instance)
+		}
+	}
 
-	} else {
-		for _, v := range p.dr.Instances {
-			// TODO: 负载均衡
-			// TODO 如果有TAG_TYPE, 还要判断是有状态还是无状态，有状态需要根据查缓存，找出TAG_ID 看是原来走的是哪个
-			if iv, ok := v.Tag(TAG_MAINTAIN); ok {
-				if iv == ver {
-					return v
-				}
+	for _, v := range p.dr.Instances {
+		// TODO: 负载均衡
+		if iv, ok := v.Tag(TAG_MAINTAIN); ok {
+			if iv == ver {
+				return v
 			}
 		}
 	}
