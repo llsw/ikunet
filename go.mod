@@ -8,6 +8,7 @@ require (
 	github.com/cloudwego/hertz v0.8.1
 	github.com/cloudwego/kitex v0.9.1
 	github.com/kitex-contrib/registry-etcd v0.2.2
+	github.com/orcaman/concurrent-map v1.0.0
 	google.golang.org/protobuf v1.33.0
 )
 
@@ -49,7 +50,6 @@ require (
 	github.com/modern-go/gls v0.0.0-20220109145502-612d0167dce5 // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/oleiade/lane v1.0.1 // indirect
-	github.com/orcaman/concurrent-map v1.0.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.17.0 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect
