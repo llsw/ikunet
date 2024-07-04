@@ -1,6 +1,21 @@
 {
 	"files": [
 		{
+			"path": "../../../../../Users/interface/git/go_path/pkg/mod/github.com/cloudwego/kitex@v0.9.1/client/client.go",
+			"bookmarks": [
+				{
+					"line": 275,
+					"column": 34,
+					"label": "客户端中间件开关"
+				},
+				{
+					"line": 373,
+					"column": 1,
+					"label": "真正调用call的地方"
+				}
+			]
+		},
+		{
 			"path": "../../../../../Users/interface/git/go_path/pkg/mod/github.com/cloudwego/kitex@v0.9.1/client/middlewares.go",
 			"bookmarks": [
 				{
