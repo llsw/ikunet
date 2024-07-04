@@ -1,0 +1,14 @@
+{
+	"files": [
+		{
+			"path": "../../../../../Users/interface/git/go_path/pkg/mod/github.com/cloudwego/kitex@v0.9.1/client/middlewares.go",
+			"bookmarks": [
+				{
+					"line": 83,
+					"column": 4,
+					"label": "服务发现"
+				}
+			]
+		}
+	]
+}
