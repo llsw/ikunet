@@ -86,7 +86,7 @@ func (s *server) serverTags(info *Info) map[string]string {
 	tags[balance.TAG_VERSION] = info.Version
 	tags[balance.TAG_CLUSTER] = info.Cluster
 	tags[balance.TAG_TYPE] = info.Type
-	tags[balance.TAG_TYPE] = info.Id
+	tags[balance.TAG_ID] = info.Id
 
 	if len(s.opt.BalancerCalls) > 0 {
 		for _, v := range s.opt.BalancerCalls {

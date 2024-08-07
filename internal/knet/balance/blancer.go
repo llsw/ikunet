@@ -99,10 +99,11 @@ func (p *picker) Next(ctx context.Context, request interface{}) discovery.Instan
 	cmd := req.GetCmd()
 	uuid := req.GetMeta().GetUuid()
 	ver, isNew := getVer(uuid, cmd, p.dr)
-	ick := fmt.Sprintf("%s_%s_stf", uuid, p.dr.CacheKey)
+
 	isSt := isStateful(p.dr.Instances[0])
 	// 不是新的又是有状态的服务，那就走原来的服务
 	if !isNew && isSt {
+		ick := fmt.Sprintf("%s_%s_stf", uuid, p.dr.CacheKey)
 		if ins, ok := cache.Get(ick); ok {
 			return ins.(discovery.Instance)
 		}
