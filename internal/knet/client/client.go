@@ -36,6 +36,7 @@ func NewClient(opts ...Option) (Client, error) {
 	if c.opt.Resolver == nil {
 		// 如果resolver为空，则使用默认的etcd resolver
 		// kdisc.WithEtcdResolver()
+		// c.opt.Resolver = kdisc.WithEtcdResolver()
 	}
 	err := c.init()
 	return c, err

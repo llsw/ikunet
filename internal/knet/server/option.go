@@ -7,10 +7,14 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/kitex/pkg/discovery"
 	"github.com/cloudwego/kitex/pkg/gofunc"
 	"github.com/cloudwego/kitex/pkg/registry"
 	"github.com/cloudwego/kitex/pkg/utils"
+	etcd "github.com/kitex-contrib/registry-etcd"
+	"github.com/kitex-contrib/registry-etcd/retry"
+	kdisc "github.com/llsw/ikunet/internal/knet/discovery"
 	midw "github.com/llsw/ikunet/internal/knet/middleware"
 	trace "github.com/llsw/ikunet/internal/knet/trace"
 )
@@ -94,4 +98,30 @@ func SysExitSignal() chan os.Signal {
 	}
 	signal.Notify(signals, notifications...)
 	return signals
+}
+
+func WithBalancerCalls(calls []string) Option {
+	return Option{
+		F: func(o *Options, di *utils.Slice) {
+			o.BalancerCalls = calls
+		},
+	}
+}
+
+func WithEtcdRetry(endpoints []string, retryConfig *retry.Config, opts ...etcd.Option) Option {
+	r, err := kdisc.NewEtcdRegistryWithRetry(endpoints, retryConfig)
+	if err != nil {
+		hlog.Fatal(err)
+	}
+	return Option{
+		F: func(o *Options, di *utils.Slice) {
+			o.Retry = r
+			r, err := kdisc.NewEtcdResolver(endpoints, opts...)
+			if err != nil {
+				hlog.Fatal(err)
+				return
+			}
+			o.Resolver = r
+		},
+	}
 }
