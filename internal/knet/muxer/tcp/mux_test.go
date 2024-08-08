@@ -6,19 +6,20 @@ import (
 	"github.com/cloudwego/kitex/pkg/discovery"
 	"github.com/go-playground/assert/v2"
 	"github.com/llsw/ikunet/internal/kitex_gen/transport"
+	balance "github.com/llsw/ikunet/internal/knet/balance"
 	"github.com/stretchr/testify/require"
 )
 
 var instance1 = discovery.NewInstance("tcp", "127.0.0.1", 1, map[string]string{
-	"1": "1",
+	balance.TAG_VERSION: "000001",
 })
 
 var instance2 = discovery.NewInstance("tcp", "127.0.0.1", 1, map[string]string{
-	"2": "2",
+	balance.TAG_VERSION: "000002",
 })
 
 var instance3 = discovery.NewInstance("tcp", "127.0.0.1", 1, map[string]string{
-	"3": "3",
+	balance.TAG_VERSION: "000003",
 })
 
 type testData struct {
@@ -45,7 +46,7 @@ func TestMuxer(t *testing.T) {
 			rule: "UuidIn(`123|456`)",
 			data: testData{
 				req: &transport.Transport{
-					Meta: &transport.Meta{Uuid: "100"},
+					Meta: &transport.Meta{Uuid: "121"},
 				},
 				instances: []*discovery.Instance{&instance1, &instance2, &instance3},
 			},

@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sync"
+	"time"
 
 	actor "github.com/asynkron/protoactor-go/actor"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/kitex/pkg/discovery"
+	"github.com/cloudwego/kitex/pkg/registry"
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	ksvc "github.com/cloudwego/kitex/server"
 	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
@@ -71,6 +74,7 @@ type server struct {
 	opt *Options
 	svc ksvc.Server
 	mws []midw.Middleware
+	sync.Mutex
 }
 
 func NewServer(opts ...Option) Server {
@@ -112,7 +116,7 @@ func (s *server) init() {
 	s.svc = transportSvc.NewServer(
 		NewTransportServiceImpl(eps),
 		ksvc.WithServiceAddr(s.opt.Address),
-		ksvc.WithRegistry(s.opt.Retry),
+		// ksvc.WithRegistry(s.opt.Retry),
 		ksvc.WithServerBasicInfo(
 			&rpcinfo.EndpointBasicInfo{
 				ServiceName: info.Name,
@@ -121,6 +125,39 @@ func (s *server) init() {
 			},
 		),
 	)
+}
+
+func (s *server) buildRegistryInfo() *registry.Info {
+	svc := s.GetServerInfo()
+	return &registry.Info{
+		ServiceName: svc.Name,
+		Addr:        svc.Address,
+		Tags:        s.serverTags(svc),
+		StartTime:   time.Now(),
+		Weight:      1,
+	}
+}
+
+func (s *server) waitExit() error {
+	exitSignal := s.opt.ExitSignal()
+	// service may not be available as soon as startup.
+	delayRegister := time.After(1 * time.Second)
+	for {
+		select {
+		case err := <-exitSignal:
+			return err
+		case <-delayRegister:
+			s.Lock()
+			if s.opt.Registry != nil {
+				s.opt.RegistryInfo = s.buildRegistryInfo()
+				if err := s.opt.Registry.Register(s.opt.RegistryInfo); err != nil {
+					s.Unlock()
+					return err
+				}
+			}
+			s.Unlock()
+		}
+	}
 }
 
 func (s *server) Run() (err error) {
@@ -158,12 +195,21 @@ func (s *server) register() (err error) {
 	if s.opt.Register != nil {
 		err = s.opt.Register(s.GetServerInfo())
 	}
+
+	if err == nil {
+		s.waitExit()
+	}
 	return
 }
 
 func (s *server) unregister() (err error) {
 	if s.opt.UnRegister != nil {
 		err = s.opt.UnRegister(s.GetServerInfo())
+	}
+	if err == nil {
+		if s.opt.Registry != nil {
+			err = s.opt.Registry.Deregister(s.opt.RegistryInfo)
+		}
 	}
 	return
 }

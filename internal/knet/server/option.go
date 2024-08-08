@@ -12,10 +12,10 @@ import (
 	"github.com/cloudwego/kitex/pkg/gofunc"
 	"github.com/cloudwego/kitex/pkg/registry"
 	"github.com/cloudwego/kitex/pkg/utils"
-	etcd "github.com/kitex-contrib/registry-etcd"
 	"github.com/kitex-contrib/registry-etcd/retry"
 	kdisc "github.com/llsw/ikunet/internal/knet/discovery"
 	midw "github.com/llsw/ikunet/internal/knet/middleware"
+	kretry "github.com/llsw/ikunet/internal/knet/registry"
 	trace "github.com/llsw/ikunet/internal/knet/trace"
 )
 
@@ -54,7 +54,8 @@ type Options struct {
 	SetTraceId    trace.SetTraceId
 	GetTrace      trace.BytesToTraces
 	SetTrace      trace.TracesToBytes
-	Retry         registry.Registry
+	Registry      registry.Registry
+	RegistryInfo  *registry.Info
 	Resolver      discovery.Resolver
 	BalancerCalls []string
 }
@@ -108,14 +109,14 @@ func WithBalancerCalls(calls []string) Option {
 	}
 }
 
-func WithEtcdRetry(endpoints []string, retryConfig *retry.Config, opts ...etcd.Option) Option {
+func WithEtcdRetry(endpoints []string, retryConfig *retry.Config, opts ...kretry.Option) Option {
 	r, err := kdisc.NewEtcdRegistryWithRetry(endpoints, retryConfig)
 	if err != nil {
 		hlog.Fatal(err)
 	}
 	return Option{
 		F: func(o *Options, di *utils.Slice) {
-			o.Retry = r
+			o.Registry = r
 			r, err := kdisc.NewEtcdResolver(endpoints, opts...)
 			if err != nil {
 				hlog.Fatal(err)

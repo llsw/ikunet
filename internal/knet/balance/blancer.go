@@ -137,3 +137,10 @@ func (b *Balancer) Name() string {
 func GetBlCallKey(call string) string {
 	return fmt.Sprintf("blcall-%s", call)
 }
+
+func GetTagVal(ins *discovery.Instance, tag string) string {
+	if val, ok := (*ins).Tag(tag); ok {
+		return val
+	}
+	return ""
+}

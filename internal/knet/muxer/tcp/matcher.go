@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/llsw/ikunet/internal/knet/balance"
 	cmap "github.com/orcaman/concurrent-map"
 )
 
@@ -15,24 +16,33 @@ type cacheData struct {
 
 var cache cmap.ConcurrentMap = cmap.New()
 var tcpFuncs = map[string]func(*matchersTree, ...string) error{
-	"UuidIn": expect1Parameter(uuidIn),
+	"Uuid":   expectParameter(uuid),
+	"Verson": expectParameter(version),
 }
 
-func expect1Parameter(fn func(*matchersTree, ...string) error) func(*matchersTree, ...string) error {
+func expectParameter(fn func(*matchersTree, ...string) error) func(*matchersTree, ...string) error {
 	return func(route *matchersTree, s ...string) error {
 		if len(s) != 1 {
 			return fmt.Errorf("unexpected number of parameters; got %d, expected 1", len(s))
 		}
-
 		return fn(route, s...)
 	}
 }
-func uuidIn(tree *matchersTree, s ...string) error {
-	if len(s) != 1 {
-		return fmt.Errorf("unexpected number of parameters; got %d, expected 1", len(s))
-	}
-	key := s[0]
 
+func stringMatcher(tree *matchersTree, s []string, prefix string, getElm func(meta Data) string) error {
+	if len(s) != 1 {
+		return fmt.Errorf("string matcher %s unexpected number of parameters; got %d, expected 1", prefix, len(s))
+	}
+	if s[0] == "*" {
+		tree.matcher = func(meta Data) bool {
+			return true
+		}
+		return nil
+	}
+
+	str := s[0]
+
+	key := fmt.Sprintf("%s:%s", prefix, str)
 	var inMap map[string]struct{}
 
 	if cd, ok := cache.Get(key); ok {
@@ -40,10 +50,10 @@ func uuidIn(tree *matchersTree, s ...string) error {
 		inMap = tempData.data
 		tempData.vt = time.Now()
 	} else {
-		uids := strings.Split(key, "|")
-		ll := len(uids)
+		elems := strings.Split(str, "|")
+		ll := len(elems)
 		inMap = make(map[string]struct{}, ll)
-		for _, v := range uids {
+		for _, v := range elems {
 			inMap[v] = struct{}{}
 		}
 		cache.Set(key, &cacheData{
@@ -53,14 +63,25 @@ func uuidIn(tree *matchersTree, s ...string) error {
 	}
 
 	tree.matcher = func(meta Data) bool {
-		uid := meta.req.Meta.GetUuid()
-		if _, ok := inMap[uid]; ok {
+		elem := getElm(meta)
+		if _, ok := inMap[elem]; ok {
 			return true
 		}
 		return false
 	}
-
 	return nil
+}
+
+func uuid(tree *matchersTree, s ...string) error {
+	return stringMatcher(tree, s, "uuid", func(meta Data) string {
+		return meta.req.Meta.GetUuid()
+	})
+}
+
+func version(tree *matchersTree, s ...string) error {
+	return stringMatcher(tree, s, "version", func(meta Data) string {
+		return balance.GetTagVal(meta.instance, balance.TAG_VERSION)
+	})
 }
 
 // func clientIP(tree *matchersTree, clientIP ...string) error {

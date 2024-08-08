@@ -8,9 +8,9 @@ import (
 	"github.com/cloudwego/kitex/pkg/discovery"
 	"github.com/cloudwego/kitex/pkg/loadbalance"
 	"github.com/cloudwego/kitex/pkg/utils"
-	etcd "github.com/kitex-contrib/registry-etcd"
 	kdisc "github.com/llsw/ikunet/internal/knet/discovery"
 	midw "github.com/llsw/ikunet/internal/knet/middleware"
+	kretry "github.com/llsw/ikunet/internal/knet/registry"
 	"github.com/llsw/ikunet/internal/knet/trace"
 )
 
@@ -65,7 +65,7 @@ func ApplyOptions(opts []Option, o *Options) {
 	}
 }
 
-func WithEtcdResolver(endpoints []string, opts ...etcd.Option) Option {
+func WithEtcdResolver(endpoints []string, opts ...kretry.Option) Option {
 	return Option{
 		F: func(o *Options, di *utils.Slice) {
 			r, err := kdisc.NewEtcdResolver(endpoints, opts...)
