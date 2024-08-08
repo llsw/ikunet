@@ -23,12 +23,13 @@ func init() {
 }
 
 type Info struct {
-	Cluster string
-	Name    string
-	Version string
-	Address net.Addr
-	Type    string
-	Id      string
+	Cluster  string
+	Name     string
+	Version  string
+	Address  net.Addr
+	Type     string
+	Id       string
+	Maintain bool
 }
 
 // Option is the only way to config a server.
@@ -58,6 +59,7 @@ type Options struct {
 	RegistryInfo  *registry.Info
 	Resolver      discovery.Resolver
 	BalancerCalls []string
+	Maintain      bool
 }
 
 // NewOptions creates a default options.
@@ -68,6 +70,7 @@ func NewOptions(opts []Option) *Options {
 		SetTraceId: trace.DefaultSetTraceId,
 		GetTrace:   trace.DefaultGetTrace,
 		SetTrace:   trace.DefaultSetTrace,
+		Maintain:   true,
 	}
 	ApplyOptions(opts, o)
 	return o

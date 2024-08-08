@@ -17,6 +17,7 @@ import (
 	transportSvc "github.com/llsw/ikunet/internal/kitex_gen/transport/transportservice"
 	balance "github.com/llsw/ikunet/internal/knet/balance"
 	midw "github.com/llsw/ikunet/internal/knet/middleware"
+	kretry "github.com/llsw/ikunet/internal/knet/registry"
 )
 
 var (
@@ -92,10 +93,10 @@ func (s *server) serverTags(info *Info) map[string]string {
 	tags[balance.TAG_TYPE] = info.Type
 	tags[balance.TAG_ID] = info.Id
 
-	if len(s.opt.BalancerCalls) > 0 {
-		for _, v := range s.opt.BalancerCalls {
-			tags[balance.GetBlCallKey(v)] = ""
-		}
+	if info.Maintain {
+		tags[balance.TAG_MAINTAIN] = balance.TAG_MAINTAIN_ON
+	} else {
+		tags[balance.TAG_MAINTAIN] = balance.TAG_MAINTAIN_OFF
 	}
 
 	return tags
@@ -180,10 +181,11 @@ func (s *server) Stop() (err error) {
 
 func (s *server) GetServerInfo() *Info {
 	return &Info{
-		Cluster: s.opt.Cluster,
-		Name:    s.opt.Name,
-		Address: s.opt.Address,
-		Version: s.opt.Version,
+		Cluster:  s.opt.Cluster,
+		Name:     s.opt.Name,
+		Address:  s.opt.Address,
+		Version:  s.opt.Version,
+		Maintain: s.opt.Maintain,
 	}
 }
 
@@ -228,4 +230,24 @@ func (s *server) logRpcErr(ctx context.Context, request *transport.Transport, er
 			cmd,
 		),
 	)
+}
+
+func (s *server) modify() (err error) {
+	s.opt.RegistryInfo = s.buildRegistryInfo()
+	if s.opt.Registry != nil {
+		if retry, ok := s.opt.Registry.(*kretry.EtcdRegistry); ok {
+			err = retry.Modify(s.opt.RegistryInfo)
+		}
+	}
+	return
+}
+
+func (s *server) Open() error {
+	s.opt.Maintain = false
+	return s.modify()
+}
+
+func (s *server) Maintain() error {
+	s.opt.Maintain = true
+	return s.modify()
 }

@@ -22,6 +22,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cloudwego/kitex/pkg/klog"
@@ -37,19 +38,21 @@ const (
 	kitexPortToRegistry = "KITEX_PORT_TO_REGISTRY"
 )
 
-type etcdRegistry struct {
+type EtcdRegistry struct {
 	etcdClient  *clientv3.Client
 	leaseTTL    int64
 	meta        *registerMeta
 	retryConfig *retry.Config
 	stop        chan struct{}
 	address     net.Addr
+	sync.Mutex
 }
 
 type registerMeta struct {
 	leaseID clientv3.LeaseID
 	ctx     context.Context
 	cancel  context.CancelFunc
+	val     string
 }
 
 // NewEtcdRegistry creates an etcd based registry.
@@ -65,7 +68,7 @@ func NewEtcdRegistry(endpoints []string, opts ...Option) (registry.Registry, err
 		return nil, err
 	}
 	retryConfig := retry.NewRetryConfig()
-	return &etcdRegistry{
+	return &EtcdRegistry{
 		etcdClient:  etcdClient,
 		leaseTTL:    getTTL(),
 		retryConfig: retryConfig,
@@ -76,11 +79,11 @@ func NewEtcdRegistry(endpoints []string, opts ...Option) (registry.Registry, err
 // SetFixedAddress sets the fixed address for registering
 // setting address to nil to clear the previous address
 func SetFixedAddress(r registry.Registry, address net.Addr) {
-	if er, ok := r.(*etcdRegistry); ok {
+	if er, ok := r.(*EtcdRegistry); ok {
 		er.address = address
 		return
 	}
-	panic("invalid registry type: not etcdRegistry")
+	panic("invalid registry type: not EtcdRegistry")
 }
 
 // NewEtcdRegistryWithRetry creates an etcd based registry with given custom retry configs
@@ -95,7 +98,7 @@ func NewEtcdRegistryWithRetry(endpoints []string, retryConfig *retry.Config, opt
 	if err != nil {
 		return nil, err
 	}
-	return &etcdRegistry{
+	return &EtcdRegistry{
 		etcdClient:  etcdClient,
 		leaseTTL:    getTTL(),
 		retryConfig: retryConfig,
@@ -115,7 +118,7 @@ func NewEtcdRegistryWithAuth(endpoints []string, username, password string) (reg
 		return nil, err
 	}
 	retryConfig := retry.NewRetryConfig()
-	return &etcdRegistry{
+	return &EtcdRegistry{
 		etcdClient:  etcdClient,
 		leaseTTL:    getTTL(),
 		retryConfig: retryConfig,
@@ -124,7 +127,7 @@ func NewEtcdRegistryWithAuth(endpoints []string, username, password string) (reg
 }
 
 // Register registers a server with given registry info.
-func (e *etcdRegistry) Register(info *registry.Info) error {
+func (e *EtcdRegistry) Register(info *registry.Info) error {
 	if err := validateRegistryInfo(info); err != nil {
 		return err
 	}
@@ -147,19 +150,7 @@ func (e *etcdRegistry) Register(info *registry.Info) error {
 	return nil
 }
 
-// Deregister deregisters a server with given registry info.
-func (e *etcdRegistry) Deregister(info *registry.Info) error {
-	if info.ServiceName == "" {
-		return fmt.Errorf("missing service name in Deregister")
-	}
-	if err := e.deregister(info); err != nil {
-		return err
-	}
-	e.meta.cancel()
-	return nil
-}
-
-func (e *etcdRegistry) register(info *registry.Info, leaseID clientv3.LeaseID) error {
+func (e *EtcdRegistry) Modify(info *registry.Info) error {
 	addr, err := e.getAddressOfRegistration(info)
 	if err != nil {
 		return err
@@ -178,6 +169,65 @@ func (e *etcdRegistry) register(info *registry.Info, leaseID clientv3.LeaseID) e
 	if err != nil {
 		return err
 	}
+	valStr := string(val)
+	e.setVal(valStr)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+	_, err = e.etcdClient.Put(ctx, serviceKey(info.ServiceName, addr), valStr, clientv3.WithLease(e.meta.leaseID))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (e *EtcdRegistry) getVal() string {
+	var s string
+	e.Lock()
+	s = e.meta.val
+	e.Unlock()
+	return s
+}
+
+func (e *EtcdRegistry) setVal(val string) {
+	e.Lock()
+	e.meta.val = val
+	e.Unlock()
+
+}
+
+// Deregister deregisters a server with given registry info.
+func (e *EtcdRegistry) Deregister(info *registry.Info) error {
+	if info.ServiceName == "" {
+		return fmt.Errorf("missing service name in Deregister")
+	}
+	if err := e.deregister(info); err != nil {
+		return err
+	}
+	e.meta.cancel()
+	return nil
+}
+
+func (e *EtcdRegistry) register(info *registry.Info, leaseID clientv3.LeaseID) error {
+	addr, err := e.getAddressOfRegistration(info)
+	if err != nil {
+		return err
+	}
+	network := info.Addr.Network()
+	if e.address != nil {
+		network = e.address.Network()
+		addr = e.address.String()
+	}
+	val, err := json.Marshal(&instanceInfo{
+		Network: network,
+		Address: addr,
+		Weight:  info.Weight,
+		Tags:    info.Tags,
+	})
+	if err != nil {
+		return err
+	}
+	e.setVal(string(val))
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	_, err = e.etcdClient.Put(ctx, serviceKey(info.ServiceName, addr), string(val), clientv3.WithLease(leaseID))
@@ -185,17 +235,18 @@ func (e *etcdRegistry) register(info *registry.Info, leaseID clientv3.LeaseID) e
 		return err
 	}
 
-	go func(key, val string) {
-		e.keepRegister(key, val, e.retryConfig)
-	}(serviceKey(info.ServiceName, addr), string(val))
+	go func(key string) {
+		e.keepRegister(key, e.retryConfig)
+	}(serviceKey(info.ServiceName, addr))
 
 	return nil
 }
 
 // keepRegister keep service registered status
 // maxRetry == 0 means retry forever
-func (e *etcdRegistry) keepRegister(key, val string, retryConfig *retry.Config) {
+func (e *EtcdRegistry) keepRegister(key string, retryConfig *retry.Config) {
 	var failedTimes uint
+	val := e.getVal()
 	delay := retryConfig.ObserveDelay
 	for retryConfig.MaxAttemptTimes == 0 || failedTimes < retryConfig.MaxAttemptTimes {
 		select {
@@ -254,7 +305,7 @@ func (e *etcdRegistry) keepRegister(key, val string, retryConfig *retry.Config) 
 	klog.Errorf("keep register service %s failed times:%d", key, failedTimes)
 }
 
-func (e *etcdRegistry) deregister(info *registry.Info) error {
+func (e *EtcdRegistry) deregister(info *registry.Info) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	addr, err := e.getAddressOfRegistration(info)
@@ -269,7 +320,7 @@ func (e *etcdRegistry) deregister(info *registry.Info) error {
 	return nil
 }
 
-func (e *etcdRegistry) grantLease() (clientv3.LeaseID, error) {
+func (e *EtcdRegistry) grantLease() (clientv3.LeaseID, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	resp, err := e.etcdClient.Grant(ctx, e.leaseTTL)
@@ -279,7 +330,7 @@ func (e *etcdRegistry) grantLease() (clientv3.LeaseID, error) {
 	return resp.ID, nil
 }
 
-func (e *etcdRegistry) keepalive(meta *registerMeta) error {
+func (e *EtcdRegistry) keepalive(meta *registerMeta) error {
 	keepAlive, err := e.etcdClient.KeepAlive(meta.ctx, meta.leaseID)
 	if err != nil {
 		return err
@@ -300,7 +351,7 @@ func (e *etcdRegistry) keepalive(meta *registerMeta) error {
 }
 
 // getAddressOfRegistration returns the address of the service registration.
-func (e *etcdRegistry) getAddressOfRegistration(info *registry.Info) (string, error) {
+func (e *EtcdRegistry) getAddressOfRegistration(info *registry.Info) (string, error) {
 
 	host, port, err := net.SplitHostPort(info.Addr.String())
 	if err != nil {
