@@ -4,3 +4,6 @@ idltrans:
 	rm -rf internal/kitex_gen
 	mv kitex_gen internal/kitex_gen
 	go mod tidy
+
+thriftver:
+	go mod edit -replace=github.com/apache/thrift=github.com/apache/thrift@v0.13.0
