@@ -19,7 +19,7 @@ type Handler interface {
 // Data contains TCP connection metadata.
 type Data struct {
 	req      *transport.Transport
-	instance discovery.Instance
+	instance *discovery.Instance
 }
 
 // Muxer defines a muxer that handles TCP routing with rules.
