@@ -15,7 +15,7 @@ type cacheData struct {
 
 var cache cmap.ConcurrentMap = cmap.New()
 var tcpFuncs = map[string]func(*matchersTree, ...string) error{
-	"UidIn": expect1Parameter(uidIn),
+	"UuidIn": expect1Parameter(uuidIn),
 }
 
 func expect1Parameter(fn func(*matchersTree, ...string) error) func(*matchersTree, ...string) error {
@@ -27,7 +27,7 @@ func expect1Parameter(fn func(*matchersTree, ...string) error) func(*matchersTre
 		return fn(route, s...)
 	}
 }
-func uidIn(tree *matchersTree, s ...string) error {
+func uuidIn(tree *matchersTree, s ...string) error {
 	if len(s) != 1 {
 		return fmt.Errorf("unexpected number of parameters; got %d, expected 1", len(s))
 	}
