@@ -70,7 +70,7 @@ func WithEtcdResolver(endpoints []string, opts ...kretry.Option) Option {
 		F: func(o *Options, di *utils.Slice) {
 			r, err := kdisc.NewEtcdResolver(endpoints, opts...)
 			if err != nil {
-				hlog.Fatal(err)
+				hlog.Fatalf("ikunet client set etccd resolver error:%s", err.Error())
 				return
 			}
 			o.Resolver = r
@@ -78,10 +78,14 @@ func WithEtcdResolver(endpoints []string, opts ...kretry.Option) Option {
 	}
 }
 
-func WithBalancer() Option {
+func WithBalancer(endpoints []string, opts ...kretry.Option) Option {
 	return Option{
 		F: func(o *Options, di *utils.Slice) {
-			o.Balancer = kdisc.NewBalancer()
+			var err error
+			o.Balancer, err = kdisc.NewBalancer(endpoints, opts...)
+			if err != nil {
+				hlog.Fatalf("ikunet client set balancer error:%s", err.Error())
+			}
 		},
 	}
 }

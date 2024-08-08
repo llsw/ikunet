@@ -16,6 +16,6 @@ func NewEtcdResolver(endpoints []string, opts ...kretry.Option) (disc.Resolver, 
 	return kretry.NewEtcdResolver(endpoints, opts...)
 }
 
-func NewBalancer() *balance.Balancer {
-	return &balance.Balancer{}
+func NewBalancer(endpoints []string, opts ...kretry.Option) (*balance.Balancer, error) {
+	return balance.NewBalancer(endpoints, opts...)
 }

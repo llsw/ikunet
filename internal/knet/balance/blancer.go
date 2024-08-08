@@ -7,6 +7,7 @@ import (
 	"github.com/cloudwego/kitex/pkg/discovery"
 	"github.com/cloudwego/kitex/pkg/loadbalance"
 	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
+	kretry "github.com/llsw/ikunet/internal/knet/registry"
 	cmap "github.com/orcaman/concurrent-map"
 )
 
@@ -123,6 +124,21 @@ func (p *picker) Next(ctx context.Context, request interface{}) discovery.Instan
 }
 
 type Balancer struct {
+	endpoints    []string
+	opts         []kretry.Option
+	ruleResolver RuleResolver
+}
+
+func NewBalancer(endpoints []string, opts ...kretry.Option) (*Balancer, error) {
+
+	r, err := NewEtcdRuleResolver(endpoints, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Balancer{
+		ruleResolver: r,
+	}, nil
 }
 
 func (b *Balancer) GetPicker(dr discovery.Result) loadbalance.Picker {
