@@ -50,7 +50,7 @@ func (p *picker) Next(ctx context.Context, request interface{}) discovery.Instan
 
 	ll := len(ins)
 	if ll > 0 {
-		idx := rand.Intn(ll) + 0
+		idx := rand.Intn(ll)
 		return ins[idx]
 	}
 	return nil
