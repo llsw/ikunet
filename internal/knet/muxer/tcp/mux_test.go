@@ -47,7 +47,7 @@ func TestMuxer(t *testing.T) {
 			rule: "UuidIn(`123|456`)",
 			data: testData{
 				req: &transport.Transport{
-					Meta: &transport.Meta{Uuid: "121"},
+					Meta: &transport.Meta{Uuid: "123"},
 				},
 				instances: []*discovery.Instance{&instance1, &instance2, &instance3},
 			},
