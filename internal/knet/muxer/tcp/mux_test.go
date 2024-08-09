@@ -53,6 +53,17 @@ func TestMuxer(t *testing.T) {
 			},
 			expected: []*discovery.Instance{&instance1, &instance2, &instance3},
 		},
+		{
+			desc: "uuid and verson",
+			rule: "UuidIn(`123|456`) and Version(`000001|000002`)",
+			data: testData{
+				req: &transport.Transport{
+					Meta: &transport.Meta{Uuid: "456"},
+				},
+				instances: []*discovery.Instance{&instance1, &instance2, &instance3},
+			},
+			expected: []*discovery.Instance{&instance1, &instance2},
+		},
 	}
 
 	for _, test := range testCases {
