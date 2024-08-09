@@ -3,7 +3,7 @@ package registry
 import "fmt"
 
 const (
-	etcdPrefixTpl = "kitex/registry-etcd/%v/"
+	etcdPrefixTpl = "knet/registry-etcd/%v/"
 )
 
 func serviceKeyPrefix(serviceName string) string {

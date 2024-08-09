@@ -17,7 +17,11 @@ require (
 	google.golang.org/protobuf v1.34.2
 )
 
-require github.com/smartystreets/assertions v1.0.1 // indirect
+require (
+	github.com/coocood/freecache v1.2.4 // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
+	github.com/smartystreets/assertions v1.0.1 // indirect
+)
 
 require (
 	github.com/Workiva/go-datastructures v1.1.3 // indirect
