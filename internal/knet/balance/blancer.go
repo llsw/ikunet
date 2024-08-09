@@ -34,7 +34,7 @@ func (p *picker) Next(ctx context.Context, request interface{}) discovery.Instan
 	req := request.(*transport.Transport)
 	var ins []discovery.Instance
 	num := 0
-	// 路由规则
+	// 服务路由规则
 	if muxer, ok := p.ruleResolver.GetRules(req.GetAddr()); ok {
 		// TODO 这里可以优化，可以提前开辟一个内存空间，复用这段内存空间, 不够再增加内存空间
 		ins = make([]discovery.Instance, 0, len(p.dr.Instances))
