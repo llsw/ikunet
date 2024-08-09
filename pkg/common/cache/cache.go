@@ -11,7 +11,7 @@ type FromSource[T any] func(key string) (val T, err error)
 
 type Cahce[T any] interface {
 	Set(key string, val T, expire time.Duration)
-	Get(key string, fromSource FromSource[T]) (val T, ok bool)
+	Get(key string, fromSource FromSource[T], expire time.Duration) (val T, ok bool)
 	Del(key string)
 }
 
@@ -36,7 +36,7 @@ func (c *cache[T]) Del(key string) {
 }
 
 // Get implements Cahce.
-func (c *cache[T]) Get(key string, fromSource FromSource[T]) (val T, ok bool) {
+func (c *cache[T]) Get(key string, fromSource FromSource[T], expire time.Duration) (val T, ok bool) {
 	if v, o := c.fc.Get(key); o {
 		if tv, o := v.(T); o {
 			val = tv
@@ -45,6 +45,7 @@ func (c *cache[T]) Get(key string, fromSource FromSource[T]) (val T, ok bool) {
 	} else {
 		if v, err := fromSource(key); err == nil {
 			val = v
+			c.fc.Set(key, val, expire)
 			ok = true
 		} else {
 			hlog.Errorf("get key:%s from source error:%s", key ,err.Error())

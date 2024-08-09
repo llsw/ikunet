@@ -5,7 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/llsw/ikunet/internal/knet/balance"
+	cv "github.com/llsw/ikunet/internal/knet/const"
+	"github.com/llsw/ikunet/internal/knet/utils"
 	cmap "github.com/orcaman/concurrent-map"
 )
 
@@ -29,12 +30,12 @@ func expectParameter(fn func(*matchersTree, ...string) error) func(*matchersTree
 	}
 }
 
-func stringMatcher(tree *matchersTree, s []string, prefix string, getElm func(meta Data) string) error {
+func stringMatcher(tree *matchersTree, s []string, prefix string, getElm func(meta *Data) string) error {
 	if len(s) != 1 {
 		return fmt.Errorf("string matcher %s unexpected number of parameters; got %d, expected 1", prefix, len(s))
 	}
 	if s[0] == "*" {
-		tree.matcher = func(meta Data) bool {
+		tree.matcher = func(meta *Data) bool {
 			return true
 		}
 		return nil
@@ -62,7 +63,7 @@ func stringMatcher(tree *matchersTree, s []string, prefix string, getElm func(me
 		})
 	}
 
-	tree.matcher = func(meta Data) bool {
+	tree.matcher = func(meta *Data) bool {
 		elem := getElm(meta)
 		if _, ok := inMap[elem]; ok {
 			return true
@@ -73,14 +74,14 @@ func stringMatcher(tree *matchersTree, s []string, prefix string, getElm func(me
 }
 
 func uuid(tree *matchersTree, s ...string) error {
-	return stringMatcher(tree, s, "uuid", func(meta Data) string {
-		return meta.req.Meta.GetUuid()
+	return stringMatcher(tree, s, "uuid", func(meta *Data) string {
+		return meta.Req.Meta.GetUuid()
 	})
 }
 
 func version(tree *matchersTree, s ...string) error {
-	return stringMatcher(tree, s, "version", func(meta Data) string {
-		return balance.GetTagVal(meta.instance, balance.TAG_VERSION)
+	return stringMatcher(tree, s, "version", func(meta *Data) string {
+		return utils.GetTagVal(meta.Instance, cv.TAG_VERSION)
 	})
 }
 

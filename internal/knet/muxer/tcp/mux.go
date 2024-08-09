@@ -18,8 +18,8 @@ type Handler interface {
 
 // Data contains TCP connection metadata.
 type Data struct {
-	req      *transport.Transport
-	instance *discovery.Instance
+	Req      *transport.Transport
+	Instance *discovery.Instance
 }
 
 // Muxer defines a muxer that handles TCP routing with rules.
@@ -47,7 +47,7 @@ func NewMuxer() (*Muxer, error) {
 
 // Match returns the handler of the first route matching the connection metadata,
 // and whether the match is exactly from the rule HostSNI(*).
-func (m Muxer) Match(meta Data) bool {
+func (m Muxer) Match(meta *Data) bool {
 	for _, route := range m.routes {
 		if route.matchers.match(meta) {
 			return true
@@ -126,7 +126,7 @@ type matchersTree struct {
 	// matcher is a matcher func used to match connection properties.
 	// If matcher is not nil, it means that this matcherTree is a leaf of the tree.
 	// It is therefore mutually exclusive with left and right.
-	matcher func(Data) bool
+	matcher func(*Data) bool
 	// operator to combine the evaluation of left and right leaves.
 	operator string
 	// Mutually exclusive with matcher.
@@ -134,7 +134,7 @@ type matchersTree struct {
 	right *matchersTree
 }
 
-func (m *matchersTree) match(meta Data) bool {
+func (m *matchersTree) match(meta *Data) bool {
 	if m == nil {
 		// This should never happen as it should have been detected during parsing.
 		log.Warn().Msg("Rule matcher is nil")
@@ -184,7 +184,7 @@ func (m *matchersTree) addRule(rule *rules.Tree, funcs matcherFuncs) error {
 
 		if rule.Not {
 			matcherFunc := m.matcher
-			m.matcher = func(meta Data) bool {
+			m.matcher = func(meta *Data) bool {
 				return !matcherFunc(meta)
 			}
 		}

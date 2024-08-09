@@ -6,20 +6,21 @@ import (
 	"github.com/cloudwego/kitex/pkg/discovery"
 	"github.com/go-playground/assert/v2"
 	"github.com/llsw/ikunet/internal/kitex_gen/transport"
-	balance "github.com/llsw/ikunet/internal/knet/balance"
+
+	cv "github.com/llsw/ikunet/internal/knet/const"
 	"github.com/stretchr/testify/require"
 )
 
 var instance1 = discovery.NewInstance("tcp", "127.0.0.1", 1, map[string]string{
-	balance.TAG_VERSION: "000001",
+	cv.TAG_VERSION: "000001",
 })
 
 var instance2 = discovery.NewInstance("tcp", "127.0.0.1", 1, map[string]string{
-	balance.TAG_VERSION: "000002",
+	cv.TAG_VERSION: "000002",
 })
 
 var instance3 = discovery.NewInstance("tcp", "127.0.0.1", 1, map[string]string{
-	balance.TAG_VERSION: "000003",
+	cv.TAG_VERSION: "000003",
 })
 
 type testData struct {
@@ -71,9 +72,9 @@ func TestMuxer(t *testing.T) {
 			results := make([]*discovery.Instance, 0)
 
 			for k, v := range test.data.instances {
-				if muxer.Match(Data{
-					req:      test.data.req,
-					instance: v,
+				if muxer.Match(&Data{
+					Req:      test.data.req,
+					Instance: v,
 				}) {
 					results = append(results, test.data.instances[k])
 				}

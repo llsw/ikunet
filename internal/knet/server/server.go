@@ -15,7 +15,7 @@ import (
 	ksvc "github.com/cloudwego/kitex/server"
 	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
 	transportSvc "github.com/llsw/ikunet/internal/kitex_gen/transport/transportservice"
-	balance "github.com/llsw/ikunet/internal/knet/balance"
+	cv "github.com/llsw/ikunet/internal/knet/const"
 	midw "github.com/llsw/ikunet/internal/knet/middleware"
 	kretry "github.com/llsw/ikunet/internal/knet/registry"
 )
@@ -88,15 +88,15 @@ func NewServer(opts ...Option) Server {
 
 func (s *server) serverTags(info *Info) map[string]string {
 	tags := make(map[string]string)
-	tags[balance.TAG_VERSION] = info.Version
-	tags[balance.TAG_CLUSTER] = info.Cluster
-	tags[balance.TAG_TYPE] = info.Type
-	tags[balance.TAG_ID] = info.Id
+	tags[cv.TAG_VERSION] = info.Version
+	tags[cv.TAG_CLUSTER] = info.Cluster
+	tags[cv.TAG_TYPE] = info.Type
+	tags[cv.TAG_ID] = info.Id
 
 	if info.Maintain {
-		tags[balance.TAG_MAINTAIN] = balance.TAG_MAINTAIN_ON
+		tags[cv.TAG_MAINTAIN] = cv.TAG_MAINTAIN_ON
 	} else {
-		tags[balance.TAG_MAINTAIN] = balance.TAG_MAINTAIN_OFF
+		tags[cv.TAG_MAINTAIN] = cv.TAG_MAINTAIN_OFF
 	}
 
 	return tags
