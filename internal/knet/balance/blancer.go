@@ -33,7 +33,10 @@ type picker struct {
 func (p *picker) Next(ctx context.Context, request interface{}) discovery.Instance {
 	req := request.(*transport.Transport)
 	var ins []discovery.Instance
+	num := 0
+	// 路由规则
 	if muxer, ok := p.ruleResolver.GetRules(req.GetAddr()); ok {
+		// TODO 这里可以优化，可以提前开辟一个内存空间，复用这段内存空间, 不够再增加内存空间
 		ins = make([]discovery.Instance, 0, len(p.dr.Instances))
 		for _, v := range p.dr.Instances {
 			match := muxer.Match(&tcp.Data{
@@ -42,15 +45,16 @@ func (p *picker) Next(ctx context.Context, request interface{}) discovery.Instan
 			})
 			if match {
 				ins = append(ins, v)
+				num = num + 1
 			}
 		}
 	} else {
 		ins = p.dr.Instances
+		num = len(ins)
 	}
 
-	ll := len(ins)
-	if ll > 0 {
-		idx := rand.Intn(ll)
+	if num > 0 {
+		idx := rand.Intn(num)
 		return ins[idx]
 	}
 	return nil
