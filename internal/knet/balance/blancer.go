@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cloudwego/kitex/internal"
 	"github.com/cloudwego/kitex/pkg/discovery"
 	"github.com/cloudwego/kitex/pkg/loadbalance"
 	transport "github.com/llsw/ikunet/internal/kitex_gen/transport"
@@ -20,19 +19,19 @@ import (
 var (
 	_ loadbalance.Loadbalancer = &Balancer{}
 	_ loadbalance.Picker       = &picker{}
-	_ internal.Reusable        = &picker{}
 
-	cache     cmap.ConcurrentMap = cmap.New()
-	whiteList cmap.ConcurrentMap = cmap.New()
+	cache cmap.ConcurrentMap = cmap.New()
 
-	pickPool = sync.Pool{
+	pickerPool = sync.Pool{
 		New: newPicker,
 	}
 	sfg singleflight.Group
 )
 
 const (
-	RULE_CACHE_KEY = "RCK"
+	RULE_CACHE_KEY    = "RCK"
+	MATCH_INS_CAP     = 10
+	MATCH_RESET_CHECK = 200
 )
 
 func init() {
@@ -42,15 +41,32 @@ func init() {
 type picker struct {
 	dr           *discovery.Result
 	ruleResolver RuleResolver
+	matchIns     []discovery.Instance
+	useCount     int
+}
+
+func newMatchIns() []discovery.Instance {
+	return make([]discovery.Instance, MATCH_INS_CAP)
 }
 
 // Recycle implements internal.Reusable.
 func (p *picker) Recycle() {
-	pickPool.Put(p)
+	p.dr = nil
+	p.ruleResolver = nil
+	p.useCount = p.useCount + 1
+
+	if p.useCount == MATCH_RESET_CHECK {
+		p.useCount = 0
+		p.matchIns = newMatchIns()
+	}
+
+	pickerPool.Put(p)
 }
 
 func newPicker() any {
-	return &picker{}
+	return &picker{
+		matchIns: newMatchIns(),
+	}
 }
 
 func (p *picker) Next(ctx context.Context, request interface{}) discovery.Instance {
@@ -60,15 +76,19 @@ func (p *picker) Next(ctx context.Context, request interface{}) discovery.Instan
 	num := 0
 	// 服务路由规则
 	if muxer, ok := p.ruleResolver.GetRules(req.GetAddr()); ok {
-		// TODO 这里可以优化，可以提前开辟一个内存空间，复用这段内存空间, 不够再增加内存空间
-		ins = make([]discovery.Instance, 0, len(p.dr.Instances))
-		for _, v := range p.dr.Instances {
+		// 复用这段内存空间, 不够再增加内存空间
+		driLen := len(p.dr.Instances)
+		if len(p.matchIns) < driLen {
+			p.matchIns = make([]discovery.Instance, driLen)
+		}
+		ins = p.matchIns
+		for k := range p.dr.Instances {
 			match := muxer.Match(&tcp.Data{
 				Req:      req,
-				Instance: &v,
+				Instance: p.dr.Instances[k],
 			})
 			if match {
-				ins = append(ins, v)
+				ins[num] = p.dr.Instances[k]
 				num = num + 1
 			}
 		}
@@ -117,7 +137,7 @@ func NewBalancer(endpoints []string, opts ...kretry.Option) (*Balancer, error) {
 // 获取服务发现的拾取器
 func (b *Balancer) GetPicker(dr discovery.Result) loadbalance.Picker {
 	// 需要池化，否则会有并发问题
-	pk := pickPool.Get().(*picker)
+	pk := pickerPool.Get().(*picker)
 	pk.dr = &dr
 	pk.ruleResolver = b.ruleResolver
 	return pk

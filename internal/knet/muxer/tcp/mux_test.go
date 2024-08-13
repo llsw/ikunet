@@ -25,7 +25,7 @@ var instance3 = discovery.NewInstance("tcp", "127.0.0.1", 1, map[string]string{
 
 type testData struct {
 	req       *transport.Transport
-	instances []*discovery.Instance
+	instances []discovery.Instance
 }
 
 func TestMuxer(t *testing.T) {
@@ -35,7 +35,7 @@ func TestMuxer(t *testing.T) {
 		headers       map[string]string
 		remoteAddr    string
 		data          testData
-		expected      []*discovery.Instance
+		expected      []discovery.Instance
 		expectedError bool
 	}{
 		{
@@ -49,9 +49,9 @@ func TestMuxer(t *testing.T) {
 				req: &transport.Transport{
 					Meta: &transport.Meta{Uuid: "123"},
 				},
-				instances: []*discovery.Instance{&instance1, &instance2, &instance3},
+				instances: []discovery.Instance{instance1, instance2, instance3},
 			},
-			expected: []*discovery.Instance{&instance1, &instance2, &instance3},
+			expected: []discovery.Instance{instance1, instance2, instance3},
 		},
 		{
 			desc: "uuid and verson",
@@ -60,9 +60,9 @@ func TestMuxer(t *testing.T) {
 				req: &transport.Transport{
 					Meta: &transport.Meta{Uuid: "456"},
 				},
-				instances: []*discovery.Instance{&instance1, &instance2, &instance3},
+				instances: []discovery.Instance{instance1, instance2, instance3},
 			},
-			expected: []*discovery.Instance{&instance1, &instance2},
+			expected: []discovery.Instance{instance1, instance2},
 		},
 	}
 
@@ -80,12 +80,12 @@ func TestMuxer(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			results := make([]*discovery.Instance, 0)
+			results := make([]discovery.Instance, 0)
 
-			for k, v := range test.data.instances {
+			for k := range test.data.instances {
 				if muxer.Match(&Data{
 					Req:      test.data.req,
-					Instance: v,
+					Instance: test.data.instances[k],
 				}) {
 					results = append(results, test.data.instances[k])
 				}
