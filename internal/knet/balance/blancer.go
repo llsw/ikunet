@@ -49,24 +49,25 @@ func newMatchIns() []discovery.Instance {
 	return make([]discovery.Instance, MATCH_INS_CAP)
 }
 
+func newPicker() any {
+	return &picker{
+		matchIns: newMatchIns(),
+	}
+}
+
 // Recycle implements internal.Reusable.
 func (p *picker) Recycle() {
 	p.dr = nil
 	p.ruleResolver = nil
 	p.useCount = p.useCount + 1
-
+	// 间隔一定的次数检测当前的缓存空间是否大于默认的缓存容量，大于的话进行一次清理
 	if p.useCount == MATCH_RESET_CHECK {
 		p.useCount = 0
-		p.matchIns = newMatchIns()
+		if len(p.matchIns) > MATCH_INS_CAP {
+			p.matchIns = newMatchIns()
+		}
 	}
-
 	pickerPool.Put(p)
-}
-
-func newPicker() any {
-	return &picker{
-		matchIns: newMatchIns(),
-	}
 }
 
 func (p *picker) Next(ctx context.Context, request interface{}) discovery.Instance {
